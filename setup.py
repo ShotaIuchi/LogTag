@@ -8,7 +8,7 @@ setup(
     ],
     entry_points={
         'console_scripts': [
-            'logtag=logtag:main',
+            'logtag=LogTag.logtag:main',
         ],
     },
     author='Shota Iuchi',
