@@ -17,7 +17,7 @@ def all_file_join(file_list: list) -> list:
     all_line = []
 
     for file in file_list:
-        with open(file, 'r') as f:
+        with open(file, 'r', encoding='utf-8') as f:
             lines = f.readlines()
             lines = [line.rstrip() for line in lines]
             all_line += lines
@@ -44,7 +44,7 @@ def read_dotfile(arg_directory: str, file: str) -> dict:
         sys.exit(1)
 
     try:
-        with open(target_file, 'r') as f:
+        with open(target_file, 'r', encoding='utf-8') as f:
             return json.load(f)
     except FileNotFoundError:
         print(f'Error: File not found: {file}')
@@ -84,7 +84,7 @@ def main():
         sys.exit(1)
 
     # convert log messages
-    with TemporaryFile('w+') as tp:
+    with TemporaryFile('w+', encoding='utf-8') as tp:
         # lambda function, write to tempolary file
         def print_tp(msg, line):
             calc_space = space - (wcswidth(msg) - len(msg))
@@ -122,7 +122,7 @@ def main():
         # write to output file
         tp.seek(0)
         if args.out:
-            with open(args.out, 'w') as f:
+            with open(args.out, 'w', encoding='utf-8') as f:
                 for line in tp.readlines():
                     f.write(line)
 
