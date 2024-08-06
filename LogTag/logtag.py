@@ -3,6 +3,8 @@ import json
 import os
 import sys
 from tempfile import TemporaryFile
+from wcwidth import wcswidth
+
 
 DOTDIR = '.logtag'
 
@@ -84,7 +86,9 @@ def main():
     # convert log messages
     with TemporaryFile('w+') as tp:
         # lambda function, write to tempolary file
-        def print_tp(msg, line): return tp.write(f'{msg:<{space}}{line}\n')
+        def print_tp(msg, line):
+            calc_space = space - (wcswidth(msg) - len(msg))
+            return tp.write(f'{msg:<{calc_space}}{line}\n')
 
         # convert all log messages
         for line in all_file:
