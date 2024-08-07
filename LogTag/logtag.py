@@ -29,9 +29,6 @@ def all_file_join(file_list: list) -> list:
 
 # read config files
 def read_dotfile(arg_directory: str, file: str) -> dict:
-    if arg_directory is None:
-        arg_directory = ''
-
     # Priority: arg_directory > HOME > CWD > PWD
     target_file = ''
     if os.path.isfile(os.path.join(arg_directory, file)):
