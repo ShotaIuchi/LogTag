@@ -13,7 +13,9 @@ CWD = os.path.dirname(os.path.abspath(__file__))
 HOME = os.path.expanduser('~')
 
 
+# join all files
 def all_file_join(file_list: list) -> list:
+
     all_line = []
 
     for file in file_list:
@@ -25,6 +27,7 @@ def all_file_join(file_list: list) -> list:
     return all_line
 
 
+# read config files
 def read_dotfile(arg_directory: str, file: str) -> dict:
     if arg_directory is None:
         arg_directory = ''
@@ -85,12 +88,12 @@ def main():
 
     # convert log messages
     with TemporaryFile('w+', encoding='utf-8') as tp:
-        # lambda function, write to tempolary file
+        # write to tempolary file
         def print_tp(msg, line):
             calc_space = space - (wcswidth(msg) - len(msg))
             return tp.write(f'{msg:<{calc_space}}{line}\n')
 
-        # convert all log messages
+        # convert log messages
         for line in all_file:
             msg = ''
             for key, value in tag.items():
@@ -104,7 +107,6 @@ def main():
             if args.uniq:
                 continue
 
-            # filter log messages
             if len(filter_display) > 0:
                 # filter log messages
                 for key in filter_display:
