@@ -1,12 +1,17 @@
 import argparse
 import json
 import os
+import re
 import sys
 from tempfile import TemporaryFile
 from wcwidth import wcswidth
 
 
 DOTDIR = '.logtag'
+
+DOT_CONFIG = 'config.json'
+DOT_TAG = r'^([0-9]+-.*-tag|[0-9]+-tag|tag)\.json$'
+DOT_FILTER = r'^([0-9]+-.*-filter|[0-9]+-filter|filter)\.json$'
 
 PWD = os.getcwd()
 CWD = os.path.dirname(os.path.abspath(__file__))
@@ -15,9 +20,7 @@ HOME = os.path.expanduser('~')
 
 # join all files
 def all_file_join(file_list: list) -> list:
-
     all_line = []
-
     for file in file_list:
         with open(file, 'r', encoding='utf-8') as f:
             lines = f.readlines()
@@ -27,31 +30,47 @@ def all_file_join(file_list: list) -> list:
     return all_line
 
 
+# load config file
+def load_config(file_path):
+    if os.path.exists(file_path):
+        with open(file_path, 'r', encoding='utf-8') as file:
+            return json.load(file)
+    return {}
+
+
+# merge config files
+def merge_configs(configs):
+    final_config = {}
+    for config in configs:
+        final_config.update(config)
+    return final_config
+
+
+# read config files
+def read_dotfiles(directory: str, pattern: str) -> dict:
+    # Priority: Lexicographically ordered
+    configs = []
+    regex = re.compile(pattern)
+    if os.path.exists(directory):
+        files = os.listdir(directory)
+        files = sorted(files)
+        for filename in files:
+            if regex.match(filename):
+                file_path = os.path.join(directory, filename)
+                configs.append(load_config(file_path))
+    return merge_configs(configs)
+
+
 # read config files
 def read_dotfile(arg_directory: str, file: str) -> dict:
-    # Priority: arg_directory > HOME > CWD > PWD
-    target_file = ''
-    if os.path.isfile(os.path.join(arg_directory, file)):
-        target_file = os.path.join(arg_directory, file)
-    elif os.path.isfile(os.path.join(HOME, DOTDIR, file)):
-        target_file = os.path.join(HOME, DOTDIR, file)
-    elif os.path.isfile(os.path.join(CWD, DOTDIR, file)):
-        target_file = os.path.join(CWD, DOTDIR, file)
-    elif os.path.isfile(os.path.join(PWD, DOTDIR, file)):
-        target_file = os.path.join(PWD, DOTDIR, file)
-    else:
-        print(f'Error: File not found: {file}')
-        sys.exit(1)
-
-    try:
-        with open(target_file, 'r', encoding='utf-8') as f:
-            return json.load(f)
-    except FileNotFoundError:
-        print(f'Error: File not found: {file}')
-        sys.exit(1)
-    except json.JSONDecodeError:
-        print(f'Error: Invalid JSON file: {file}')
-        sys.exit(1)
+    # Priority: arg_directory > CWD > HOME > PWD
+    configs = []
+    if arg_directory:
+        configs.append(read_dotfiles(arg_directory, file))
+    configs.append(read_dotfiles(os.path.join(CWD, DOTDIR), file))
+    configs.append(read_dotfiles(os.path.join(HOME, DOTDIR), file))
+    configs.append(read_dotfiles(os.path.join(PWD, DOTDIR), file))
+    return merge_configs(configs)
 
 
 def main():
@@ -65,9 +84,9 @@ def main():
     args = parser.parse_args()
 
     # read config files
-    cfg = read_dotfile(args.config, 'config.json')
-    tag = read_dotfile(args.config, 'logtag.tag.json')
-    filter = read_dotfile(args.config, 'logtag.filter.json')
+    cfg = read_dotfile(args.config, DOT_CONFIG)
+    tag = read_dotfile(args.config, DOT_TAG)
+    filter = read_dotfile(args.config, DOT_FILTER)
 
     space = cfg['space']
     filter_display = filter['display']
