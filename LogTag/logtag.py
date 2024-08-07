@@ -114,17 +114,17 @@ def main():
             else:
                 print_tp(msg, line)
 
-        # print converted log messages
+        # read tempolary file
         tp.seek(0)
-        for line in tp.readlines():
-            print(line.rstrip())
+        tf = tp.read()
 
-        # write to output file
-        tp.seek(0)
+        # print converted log messages to stdout
+        print(tf)
+
+        # write converted log messages to output file
         if args.out:
             with open(args.out, 'w', encoding='utf-8') as f:
-                for line in tp.readlines():
-                    f.write(line)
+                f.write(tf)
 
 
 if __name__ == '__main__':
