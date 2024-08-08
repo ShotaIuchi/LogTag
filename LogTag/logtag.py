@@ -5,7 +5,7 @@ import re
 import sys
 from tempfile import TemporaryFile
 from wcwidth import wcswidth
-
+from tabulate import tabulate
 
 DOTDIR = '.logtag'
 
@@ -39,7 +39,7 @@ def load_config(file_path):
 
 
 # merge config files
-def merge_configs(configs):
+def merge_configs(configs: dict) -> dict:
     final_config = {}
     for config in configs:
         final_config.update(config)
@@ -103,46 +103,45 @@ def main():
         sys.exit(1)
 
     # convert log messages
-    with TemporaryFile('w+', encoding='utf-8') as tp:
-        # write to tempolary file
-        def print_tp(msg, line):
-            calc_space = space - (wcswidth(msg) - len(msg))
-            return tp.write(f'{msg:<{calc_space}}{line}\n')
+    log_messages = []
 
-        # convert log messages
-        for line in all_file:
-            msg = ''
-            for key, value in tag.items():
+    def print_tp(msg, line):
+        log_messages.append({'tab': msg, 'log': line})
+
+    # convert log messages
+    for line in all_file:
+        msg = ''
+        for key, value in tag.items():
+            if key in line:
+                msg = value
+                if args.uniq:
+                    print_tp(msg, line)
+                break
+
+        # remove duplicate log messages
+        if args.uniq:
+            continue
+
+        if len(filter_display) > 0:
+            # filter log messages
+            for key in filter_display:
                 if key in line:
-                    msg = value
-                    if args.uniq:
-                        print_tp(msg, line)
+                    print_tp(msg, line)
                     break
+        else:
+            print_tp(msg, line)
 
-            # remove duplicate log messages
-            if args.uniq:
-                continue
+    # convert log messages to table
+    table = tabulate(log_messages, headers='keys', tablefmt='plain')
 
-            if len(filter_display) > 0:
-                # filter log messages
-                for key in filter_display:
-                    if key in line:
-                        print_tp(msg, line)
-                        break
-            else:
-                print_tp(msg, line)
+    # print converted log messages
+    print(table)
 
-        # read tempolary file
-        tp.seek(0)
-        tf = tp.read()
-
-        # print converted log messages to stdout
-        print(tf)
-
-        # write converted log messages to output file
-        if args.out:
-            with open(args.out, 'w', encoding='utf-8') as f:
-                f.write(tf)
+    # write converted log messages to output file
+    if args.out:
+        with open(args.out, 'w', encoding='utf-8') as f:
+            f.write(table)
+            f.write('\n')
 
 
 if __name__ == '__main__':
