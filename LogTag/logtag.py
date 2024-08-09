@@ -14,6 +14,8 @@ DOT_CONFIG = 'config.json'
 DOT_TAG = r'^([0-9]+-.*-tag|[0-9]+-tag|tag)\.json$'
 DOT_FILTER = r'^([0-9]+-.*-filter|[0-9]+-filter|filter)\.json$'
 
+DOT_CATEGORY = r'^[0-9]+-(.*)-tag\.json$'
+
 PWD = os.getcwd()
 CWD = os.path.dirname(os.path.abspath(__file__))
 HOME = os.path.expanduser('~')
@@ -21,6 +23,11 @@ HOME = os.path.expanduser('~')
 
 class ELog(Enum):
     LOG = 0
+    FILE = 1
+
+
+class EConfig(Enum):
+    MSG = 0
     FILE = 1
 
 
@@ -39,11 +46,20 @@ def all_file_join(file_list: list) -> list:
 # load config file
 def load_config(file_path: str) -> dict:
     if os.path.exists(file_path):
+        category = ''
+        filename = os.path.basename(file_path)
+        match = re.match(DOT_CATEGORY, filename)
+        if match:
+            category = match.group(1)
+        else:
+            print("No match found.")
+
         with open(file_path, 'r', encoding='utf-8') as file:
             lines = json.load(file)
-            print(lines)
-            # lines = [line for line in lines]
-            return lines
+            config = {}
+            for k, v in lines.items():
+                config[k] = [v, category]
+            return config
     return {}
 
 
@@ -62,7 +78,7 @@ def read_dotfiles(directory: str, pattern: str) -> dict:
     regex = re.compile(pattern)
     if os.path.exists(directory):
         files = os.listdir(directory)
-        files = sorted(files)
+        files = reversed(files)  # コミットを別にするの注意
         for filename in files:
             if regex.match(filename):
                 file_path = os.path.join(directory, filename)
@@ -97,8 +113,8 @@ def main():
     tag = read_dotfile(args.config, DOT_TAG)
     filter = read_dotfile(args.config, DOT_FILTER)
 
-    space = cfg['space']
-    filter_display = filter['display']
+    space = cfg['space'][EConfig.MSG.value]
+    filter_display = filter['display'][EConfig.MSG.value]
 
     # read all log messages
     if args.file:
@@ -114,21 +130,20 @@ def main():
     # convert log messages
     log_messages = []
 
-    def print_tp(msg, line):
-        log_messages.append({'tab': msg, 'file': line[ELog.FILE.value], 'log': line[ELog.LOG.value]})
+    def print_tp(msg: list, line: str) -> None:
+        log_messages.append({'tag': msg[EConfig.FILE.value], 'message': msg[EConfig.MSG.value], 'file': line[ELog.FILE.value], 'log': line[ELog.LOG.value]})
 
     # convert log messages
     for line in all_file:
-        msg = ''
+        msg = ['', '']
         for key, value in tag.items():
             if key in line:
                 msg = value
-                if args.uniq:
-                    print_tp(msg, line)
                 break
 
         # remove duplicate log messages
         if args.uniq:
+            print_tp(msg, line)
             continue
 
         if len(filter_display) > 0:
