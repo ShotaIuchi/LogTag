@@ -131,15 +131,21 @@ def main():
     log_messages = []
 
     def print_tp(msg: list, line: str) -> None:
-        log_messages.append({'tag': msg[EConfig.FILE.value], 'message': msg[EConfig.MSG.value], 'file': line[ELog.FILE.value], 'log': line[ELog.LOG.value]})
+        category = ''
+        message = ''
+        for m in msg:
+            message = m[EConfig.MSG.value]
+            if (category != ''):
+                category += ','
+            category += m[EConfig.FILE.value]
+        log_messages.append({'category': category, 'message': message, 'file': line[ELog.FILE.value], 'log': line[ELog.LOG.value]})
 
     # convert log messages
     for line in all_file:
-        msg = ['', '']
+        msg = []
         for key, value in tag.items():
             if key in line:
-                msg = value
-                break
+                msg.append(value)
 
         # remove duplicate log messages
         if args.uniq:
