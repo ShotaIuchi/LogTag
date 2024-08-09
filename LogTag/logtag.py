@@ -7,6 +7,7 @@ from tempfile import TemporaryFile
 from wcwidth import wcswidth
 from tabulate import tabulate
 from enum import Enum
+import pprint
 
 DOTDIR = '.logtag'
 
@@ -46,7 +47,7 @@ def all_file_join(file_list: list) -> list:
 # load config file
 def load_config(file_path: str) -> dict:
     if os.path.exists(file_path):
-        category = ''
+        category = 'none'
         filename = os.path.basename(file_path)
         match = re.match(DOT_CATEGORY, filename)
         if match:
@@ -56,9 +57,7 @@ def load_config(file_path: str) -> dict:
 
         with open(file_path, 'r', encoding='utf-8') as file:
             lines = json.load(file)
-            config = {}
-            for k, v in lines.items():
-                config[k] = [v, category]
+            config = {category: lines}
             return config
     return {}
 
@@ -113,8 +112,12 @@ def main():
     tag = read_dotfile(args.config, DOT_TAG)
     filter = read_dotfile(args.config, DOT_FILTER)
 
-    space = cfg['space'][EConfig.MSG.value]
-    filter_display = filter['display'][EConfig.MSG.value]
+    print(cfg)
+    print(filter)
+    pprint.pprint(tag)
+
+    space = cfg['none']['space']
+    filter_display = filter['none']['display']
 
     # read all log messages
     if args.file:
@@ -130,22 +133,24 @@ def main():
     # convert log messages
     log_messages = []
 
-    def print_tp(msg: list, line: str) -> None:
+    def print_tp(msg: dict, line: str) -> None:
         category = ''
         message = ''
         for m in msg:
-            message = m[EConfig.MSG.value]
+            message = m[EConfig.MSG.value][1]
             if (category != ''):
                 category += ','
-            category += m[EConfig.FILE.value]
+            category += m[EConfig.MSG.value][0]
         log_messages.append({'category': category, 'message': message, 'file': line[ELog.FILE.value], 'log': line[ELog.LOG.value]})
 
     # convert log messages
     for line in all_file:
         msg = []
-        for key, value in tag.items():
-            if key in line:
-                msg.append(value)
+        for ktag, vtag in tag.items():
+            for key, value in vtag.items():
+                if key in line:
+                    print(f"{ktag}, {key}, {vtag}, {value}")
+                    msg.append([[ktag, value], value])
 
         # remove duplicate log messages
         if args.uniq:
