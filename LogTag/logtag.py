@@ -6,6 +6,7 @@ import sys
 from tempfile import TemporaryFile
 from wcwidth import wcswidth
 from tabulate import tabulate
+from enum import Enum
 
 DOTDIR = '.logtag'
 
@@ -18,23 +19,31 @@ CWD = os.path.dirname(os.path.abspath(__file__))
 HOME = os.path.expanduser('~')
 
 
+class ELog(Enum):
+    LOG = 0
+    FILE = 1
+
+
 # join all files
 def all_file_join(file_list: list) -> list:
     all_line = []
     for file in file_list:
         with open(file, 'r', encoding='utf-8') as f:
             lines = f.readlines()
-            lines = [line.rstrip() for line in lines]
+            lines = [[line.rstrip(), file] for line in lines]
             all_line += lines
 
     return all_line
 
 
 # load config file
-def load_config(file_path):
+def load_config(file_path: str) -> dict:
     if os.path.exists(file_path):
         with open(file_path, 'r', encoding='utf-8') as file:
-            return json.load(file)
+            lines = json.load(file)
+            print(lines)
+            # lines = [line for line in lines]
+            return lines
     return {}
 
 
@@ -106,7 +115,7 @@ def main():
     log_messages = []
 
     def print_tp(msg, line):
-        log_messages.append({'tab': msg, 'log': line})
+        log_messages.append({'tab': msg, 'file': line[ELog.FILE.value], 'log': line[ELog.LOG.value]})
 
     # convert log messages
     for line in all_file:
