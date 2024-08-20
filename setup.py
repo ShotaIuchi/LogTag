@@ -5,7 +5,7 @@ setup(
     version='0.1.0',
     packages=find_packages(),
     install_requires=[
-        'wcwidth'
+        'tabulate',
     ],
     entry_points={
         'console_scripts': [
