@@ -1,4 +1,5 @@
 import argparse
+import glob
 import json
 import os
 import re
@@ -19,13 +20,15 @@ HOME = os.path.expanduser('~')
 
 
 # join all files
-def all_file_join(file_list: list) -> list:
+def all_file_join(pattern_list: list) -> list:
     all_line = []
-    for file in file_list:
-        with open(file, 'r', encoding='utf-8') as f:
-            lines = f.readlines()
-            lines = [line.rstrip() for line in lines]
-            all_line += lines
+    for pattern in pattern_list:
+        file_list = glob.glob(pattern)
+        for file in file_list:
+            with open(file, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+                lines = [line.rstrip() for line in lines]
+                all_line += lines
 
     return all_line
 
