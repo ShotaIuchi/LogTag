@@ -78,6 +78,7 @@ def read_dotfile(arg_directory: str, file: str) -> dict:
 
 def main():
     parser = argparse.ArgumentParser(description='LogTag adds tags to log messages.')
+    parser.add_argument('files', nargs='*', type=str, help='Files to add tags.')
     parser.add_argument('-f', '--file', type=str, nargs='+', help='Files to add tags.')
     parser.add_argument('-o', '--out', type=str, help='Output file.')
     parser.add_argument('-s', '--sort', action='store_true', help='Sort log messages.')
@@ -94,9 +95,15 @@ def main():
     space = cfg['space']
     filter_display = filter['display']
 
-    # read all log messages
+    # If --file/-f is used, override positional arguments
     if args.file:
-        all_file = all_file_join(args.file)
+        files = args.file
+    else:
+        files = args.files
+
+    # read all log messages
+    if files:
+        all_file = all_file_join(files)
 
         # sort log messages
         if args.sort:
