@@ -1,6 +1,6 @@
 import argparse
 import glob
-import json
+import hjson
 import os
 import re
 import sys
@@ -59,13 +59,13 @@ class ReadDotFile:
                 filename = os.path.basename(filepath)
                 category = self.get_category(filename)
                 with open(filepath, 'r', encoding='utf-8') as file:
-                    lines = json.load(file)
+                    lines = hjson.load(file)
                     if category:
                         config = {category: lines}
                     else:
                         config = lines
                     return config
-            except json.JSONDecodeError:
+            except hjson.JSONDecodeError:
                 print(f"Error: Failed to decode JSON from {filepath}.")
                 return {}
         return {}
@@ -98,7 +98,7 @@ class ReadDotFile:
 # Class to read configuration files named 'config.json'
 class ReadDotFileConfig(ReadDotFile):
     def __init__(self, argdirectory: str):
-        filepattern = 'config.json'
+        filepattern = r'^config\.(json|hjson)$'
         super().__init__(argdirectory, filepattern, None)
 
     # Override load method to handle 'config.json' files specifically
@@ -109,7 +109,7 @@ class ReadDotFileConfig(ReadDotFile):
 # Class to read filter files matching certain patterns
 class ReadDotFileFilter(ReadDotFile):
     def __init__(self, argdirectory: str):
-        filepattern = r'^([0-9]+-.*-filter|[0-9]+-filter|filter)\.json$'
+        filepattern = r'^([0-9]+-.*-filter|[0-9]+-filter|filter)\.(json|hjson)$'
         super().__init__(argdirectory, filepattern, None)
 
     # Override load method to handle filter files specifically
@@ -120,8 +120,8 @@ class ReadDotFileFilter(ReadDotFile):
 # Class to read tag files matching certain patterns and extract categories
 class ReadDotFileTag(ReadDotFile):
     def __init__(self, argdirectory: str):
-        filepattern = r'^([0-9]+-.*-tag|[0-9]+-tag|tag)\.json$'
-        category = r'^[0-9]+-(.*)-tag\.json$'
+        filepattern = r'^([0-9]+-.*-tag|[0-9]+-tag|tag)\.(json|hjson)$'
+        category = r'^[0-9]+-(.*)-tag\.(json|hjson)$'
         super().__init__(argdirectory, filepattern, category)
 
     # Override load method to handle tag files specifically

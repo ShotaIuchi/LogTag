@@ -6,6 +6,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         'tabulate',
+        'hjson',
     ],
     entry_points={
         'console_scripts': [

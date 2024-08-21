@@ -1,4 +1,5 @@
 {
+    // Log culumuns display settings.
     "column" : [
         {
             "name" : "TAG",
