@@ -151,6 +151,7 @@ def main():
     parser.add_argument('-o', '--out', type=str, help='Output file.')
     parser.add_argument('-s', '--sort', action='store_true', help='Sort log messages.')
     parser.add_argument('-u', '--uniq', action='store_true', help='Remove duplicate log messages.')
+    parser.add_argument('--hidden', action='store_true', help='Display hidden.')
     parser.add_argument('--config', type=str, help='Config directory.')
 
     args = parser.parse_args()
@@ -232,7 +233,8 @@ def main():
     table = tabulate(log_messages, headers='keys', tablefmt='plain')
 
     # Print the formatted log messages
-    print(table)
+    if not args.hidden:
+        print(table)
 
     # Write the formatted log messages to an output file if specified
     if args.out:
