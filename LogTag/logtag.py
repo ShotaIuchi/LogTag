@@ -106,17 +106,6 @@ class ReadDotFileConfig(ReadDotFile):
         return super().load()
 
 
-# Class to read filter files matching certain patterns
-class ReadDotFileFilter(ReadDotFile):
-    def __init__(self, argdirectory: str):
-        filepattern = r'^([0-9]+-.*-filter|[0-9]+-filter|filter)\.(json|hjson)$'
-        super().__init__(argdirectory, filepattern, None)
-
-    # Override load method to handle filter files specifically
-    def load(self) -> dict:
-        return super().load()
-
-
 # Class to read tag files matching certain patterns and extract categories
 class ReadDotFileTag(ReadDotFile):
     def __init__(self, argdirectory: str):
@@ -176,14 +165,12 @@ def main():
     if args.sort:
         all_file = sorted(all_file, key=lambda line: line.line)
 
-    # Load configuration, tags, and filters from .logtag files
+    # Load configuration, tags from .logtag files
     cfg = ReadDotFileConfig(args.config).load()
     tag = ReadDotFileTag(args.config).load()
-    filter = ReadDotFileFilter(args.config).load()
 
-    # Extract the column configuration and filter display settings
+    # Extract the column configuration display settings
     column = cfg.get('column', [])
-    filter_display = filter['display']
 
     # Initialize a list to hold the processed log messages
     log_messages = []
@@ -206,7 +193,7 @@ def main():
                     line_message[title] = line.line
         log_messages.append(line_message)
 
-    # Process each line in the log files to apply tags and filters
+    # Process each line in the log files to apply tags
     for line in all_file:
         msg = []
         for ktag, vtag in tag.items():
@@ -220,12 +207,6 @@ def main():
                 print_tp(msg, line)
             continue
 
-        # Apply display filters if specified
-        if len(filter_display) > 0:
-            for key in filter_display:
-                if key in line:
-                    print_tp(msg, line)
-                    break
         else:
             print_tp(msg, line)
 
