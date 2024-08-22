@@ -129,17 +129,14 @@ class ReadDotFileTag(ReadDotFile):
         return super().load()
 
 
-# Function to join lines from all files that match given patterns
-def all_file_join(pattern_list: list) -> list:
+# Function to join lines from all files that match given files
+def all_file_join(file_list: list) -> list:
     all_line = []
-    for pattern in pattern_list:
-        file_list = glob.glob(pattern)
-        for file in file_list:
-            with open(file, 'r', encoding='utf-8') as f:
-                lines = f.readlines()
-                lines = [Line(file, line.rstrip()) for line in lines]
-                all_line += lines
-
+    for file in file_list:
+        with open(file, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+            lines = [Line(file, line.rstrip()) for line in lines]
+            all_line += lines
     return all_line
 
 
@@ -168,7 +165,12 @@ def main():
         sys.exit(1)
 
     # Join all log messages from the provided files
-    all_file = all_file_join(files)
+    all_files = []
+    for pattern in files:
+        file_list = glob.glob(pattern)
+        for file in file_list:
+            all_files.append(file)
+    all_file = all_file_join(all_files)
 
     # Sort log messages if the sort option is specified
     if args.sort:
@@ -188,8 +190,6 @@ def main():
 
     # Helper function to format and store log messages based on the config
     def print_tp(msgs: list, line: Line) -> None:
-        ctg = ', '.join([msg.category for msg in msgs])
-        msg = ', '.join([msg.value for msg in msgs])
         line_message = {}
         for col in column:
             if not col['enable']:
@@ -197,9 +197,9 @@ def main():
             title = col['display']
             match col['name']:
                 case 'TAG':
-                    line_message[title] = msg
+                    line_message[title] = ', '.join([msg.value for msg in msgs])
                 case 'CATEGORY':
-                    line_message[title] = ctg
+                    line_message[title] = ', '.join([msg.category for msg in msgs])
                 case 'FILE':
                     line_message[title] = line.file
                 case 'LOG':
