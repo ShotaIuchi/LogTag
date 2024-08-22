@@ -95,7 +95,7 @@ class ReadDotFile:
         return self.merge_configs(configs)
 
 
-# Class to read configuration files named 'config.json'
+# Class to read configuration files named 'config.json, config.hjson'
 class ReadDotFileConfig(ReadDotFile):
     def __init__(self, argdirectory: str):
         filepattern = r'^config\.(json|hjson)$'
@@ -109,8 +109,8 @@ class ReadDotFileConfig(ReadDotFile):
 # Class to read tag files matching certain patterns and extract categories
 class ReadDotFileTag(ReadDotFile):
     def __init__(self, argdirectory: str):
-        filepattern = r'^([0-9]+-.*-tag|[0-9]+-tag|tag)\.(json|hjson)$'
-        category = r'^[0-9]+-(.*)-tag\.(json|hjson)$'
+        filepattern = r'^([0-9]+-.*)\.(json|hjson)$'
+        category = r'^[0-9]+-(.*)\.(json|hjson)$'
         super().__init__(argdirectory, filepattern, category)
 
     # Override load method to handle tag files specifically
