@@ -21,5 +21,14 @@
             "display" : "LOG",
             "enable" : true
         }
+    ],
+
+    // Enable tag category.
+    // "<tag>-<subtag>"
+    "category" : [
+        // "default",
+        // "android",
+        // "android-kernel",
+        // "etc..."
     ]
 }

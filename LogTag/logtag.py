@@ -1,10 +1,11 @@
 import argparse
 import glob
-import hjson
 import os
 import re
 import sys
+import hjson
 from tabulate import tabulate
+
 
 # Define the directory for configuration files
 DOTDIR = '.logtag'
@@ -15,168 +16,201 @@ CWD = os.path.dirname(os.path.abspath(__file__))
 HOME = os.path.expanduser('~')
 
 
-# Class to represent a tag with a key, value, and category
-class Tag:
-    def __init__(self, key: str, value: str, category: str):
-        self.key = key
-        self.value = value
-        self.category = category
-
-
-# Class to represent a line from a log file
 class Line:
-    def __init__(self, file: str, line: str):
-        self.file = file
-        self.line = line
+    def __init__(self, file_path: str, log_line: str):
+        self.file_path = file_path
+        self.log_line = log_line
 
 
-# Base class to read and load .logtag files based on patterns
-class ReadDotFile:
-    def __init__(self, argdirectory: str, filepattern: str, category: str):
-        self.argdirectory = argdirectory
-        self.filepattern = filepattern
+class Log:
+    def __init__(self):
+        self.lines: list[Line] = []
+
+    def append(self, file_path: str, line: list) -> None:
+        self.lines += [Line(file_path, l.rstrip()) for l in line]
+
+    def soft(self) -> None:
+        self.lines = sorted(self.lines, key=lambda line: line.log_line)
+
+
+class MatchedTag:
+    def __init__(self, category: str, word: str, msg: str):
         self.category = category
-
-    # Method to extract category from the filename if a pattern is provided
-    def get_category(self, filename: str) -> str:
-        if self.category:
-            match = re.match(self.category, filename)
-            if match:
-                return match.group(1)
-        return None
-
-    # Merge multiple configurations into a single dictionary
-    def merge_configs(self, configs: dict) -> dict:
-        final_config = {}
-        for config in configs:
-            final_config.update(config)
-        return final_config
-
-    # Load a configuration from a single file
-    def load_config(self, filepath: str) -> dict:
-        if os.path.exists(filepath):
-            try:
-                filename = os.path.basename(filepath)
-                category = self.get_category(filename)
-                with open(filepath, 'r', encoding='utf-8') as file:
-                    lines = hjson.load(file)
-                    if category:
-                        config = {category: lines}
-                    else:
-                        config = lines
-                    return config
-            except hjson.JSONDecodeError:
-                print(f"Error: Failed to decode JSON from {filepath}.")
-                return {}
-        return {}
-
-    # Load all configurations that match the file pattern in the directory
-    def load_configs(self, directory: str) -> dict:
-        configs = []
-        if not os.path.exists(directory) or not os.listdir(directory):
-            return {}
-        regex = re.compile(self.filepattern)
-        files = reversed(os.listdir(directory))
-        for filename in files:
-            if regex.match(filename):
-                filepath = os.path.join(directory, filename)
-                configs.append(self.load_config(filepath))
-        return self.merge_configs(configs)
-
-    # Load configurations with priority from multiple directories
-    def load(self) -> dict:
-        # Priority: arg_directory > CWD > HOME > PWD
-        configs = []
-        if self.argdirectory:
-            configs.append(self.load_configs(self.argdirectory))
-        configs.append(self.load_configs(os.path.join(CWD, DOTDIR)))
-        configs.append(self.load_configs(os.path.join(HOME, DOTDIR)))
-        configs.append(self.load_configs(os.path.join(PWD, DOTDIR)))
-        return self.merge_configs(configs)
+        self.word = word
+        self.msg = msg
 
 
-# Class to read configuration files named 'config.json, config.hjson'
-class ReadDotFileConfig(ReadDotFile):
-    def __init__(self, argdirectory: str):
-        filepattern = r'^config\.(json|hjson)$'
-        super().__init__(argdirectory, filepattern, None)
-
-    # Override load method to handle 'config.json' files specifically
-    def load(self) -> dict:
-        return super().load()
-
-
-# Class to read tag files matching certain patterns and extract categories
-class ReadDotFileTag(ReadDotFile):
-    def __init__(self, argdirectory: str):
-        filepattern = r'^([0-9]+-.*)\.(json|hjson)$'
-        category = r'^[0-9]+-(.*)\.(json|hjson)$'
-        super().__init__(argdirectory, filepattern, category)
-
-    # Override load method to handle tag files specifically
-    def load(self) -> dict:
-        return super().load()
-
-
-# Function to join lines from all files that match given files
-def all_file_join(file_list: list) -> list:
-    all_line = []
+def read_log_files(file_list: list) -> Log:
+    log = Log()
     for file in file_list:
         with open(file, 'r', encoding='utf-8') as f:
-            lines = f.readlines()
-            lines = [Line(file, line.rstrip()) for line in lines]
-            all_line += lines
-    return all_line
+            line = f.readlines()
+            log.append(file, line)
+    return log
 
 
-# Main function to parse arguments and process log files
+def merge(configs: dict) -> dict:
+    if not configs:
+        return {}
+
+    merge_config = {}
+    for config in configs:
+        if not config:
+            continue
+        merge_config.update(config)
+    return merge_config
+
+
+def load_files(directory: str, file_pattern: str, load_file) -> dict:
+    if not os.path.exists(directory) or not os.listdir(directory):
+        return {}
+
+    file_regex = re.compile(file_pattern)
+
+    configs = []
+    files = reversed(os.listdir(directory))
+    for file in files:
+        if file_regex.match(file):
+            filepath = os.path.join(directory, file)
+            configs.append(load_file(filepath))
+
+    merge_config = merge(configs)
+    return merge_config
+
+
+def load_config_file(arg_dir: str) -> dict:
+    def load_file(file_path: str) -> dict:
+        if not os.path.exists(file_path):
+            return {}
+        try:
+            with open(file_path, 'r', encoding='utf-8') as file:
+                return hjson.load(file)
+        except hjson.JSONDecodeError:
+            print(f"Error: Failed to decode JSON from {file_path}.")
+            return {}
+
+    configs = []
+
+    def load(directory: str) -> dict:
+        if directory:
+            config = load_files(directory, r'^config\.(json|hjson)$', load_file)
+            configs.append(config)
+
+    load(arg_dir)
+    load(os.path.join(CWD, DOTDIR))
+    load(os.path.join(HOME, DOTDIR))
+    load(os.path.join(PWD, DOTDIR))
+
+    merge_config = merge(configs)
+    return merge_config
+
+
+def load_logtag_file(arg_dir: str) -> dict:
+    def cut_out_category(file_path: str) -> str:
+        match = re.match(r'^[0-9]+-(.*)\.(json|hjson)$', file_path)
+        if match:
+            return match.group(1)
+        return None
+
+    def load_file(file_path: str) -> dict:
+        if not os.path.exists(file_path):
+            return {}
+
+        try:
+            filename = os.path.basename(file_path)
+            category = cut_out_category(filename)
+            with open(file_path, 'r', encoding='utf-8') as file:
+                logtag = hjson.load(file)
+                config = {category: logtag}
+                return config
+        except hjson.JSONDecodeError:
+            print(f"Error: Failed to decode JSON from {file_path}.")
+            return {}
+
+    configs = []
+
+    def load(directory: str):
+        if directory:
+            directory = os.path.join(directory, 'logtag')
+            if not os.path.exists(directory):
+                return
+            config = load_files(directory, r'^[0-9]+-.*\.(json|hjson)$', load_file)
+            configs.append(config)
+
+    load(arg_dir)
+    load(os.path.join(CWD, DOTDIR))
+    load(os.path.join(HOME, DOTDIR))
+    load(os.path.join(PWD, DOTDIR))
+
+    merge_config = merge(configs)
+    return merge_config
+
+
 def main():
+    '''
+    Main function to process log messages and add tags
+    '''
     parser = argparse.ArgumentParser(description='LogTag adds tags to log messages.')
-    parser.add_argument('files', nargs='*', type=str, help='Files to add tags.')
+    parser.add_argument('files', type=str, nargs='*', help='Files to add tags.')
     parser.add_argument('-f', '--file', type=str, nargs='+', help='Files to add tags.')
+    parser.add_argument('-c', '--category', type=str, nargs="*", help='Enable tag category.')
     parser.add_argument('-o', '--out', type=str, help='Output file.')
     parser.add_argument('-s', '--sort', action='store_true', help='Sort log messages.')
     parser.add_argument('-u', '--uniq', action='store_true', help='Remove duplicate log messages.')
     parser.add_argument('--hidden', action='store_true', help='Display hidden.')
     parser.add_argument('--config', type=str, help='Config directory.')
-
     args = parser.parse_args()
 
     # If --file/-f is used, override positional arguments
     if args.file:
-        files = args.file
+        file_pattern_list = args.file
     else:
-        files = args.files
+        file_pattern_list = args.files
 
     # If no files are provided, print an error message and exit
-    if not files:
+    if not file_pattern_list:
         print('Error: No input files. Use -f or provide file arguments.')
         sys.exit(1)
 
     # Join all log messages from the provided files
-    all_files = []
-    for pattern in files:
-        file_list = glob.glob(pattern)
-        for file in file_list:
-            all_files.append(file)
-    all_file = all_file_join(all_files)
+    file_list = []
+    for file_pattern in file_pattern_list:
+        glob_file_list = glob.glob(file_pattern)
+        for glob_file in glob_file_list:
+            file_list.append(glob_file)
+
+    # Read log files and store log messages
+    logs = read_log_files(file_list)
 
     # Sort log messages if the sort option is specified
     if args.sort:
-        all_file = sorted(all_file, key=lambda line: line.line)
+        logs.soft()
 
     # Load configuration, tags from .logtag files
-    cfg = ReadDotFileConfig(args.config).load()
-    tag = ReadDotFileTag(args.config).load()
+    config = load_config_file(args.config)
 
     # Extract the column configuration display settings
-    column = cfg.get('column', [])
+    column = config.get('column', [])
+
+    # Extract the category configuration display settings
+    category = config.get('category', [])
+
+    # If the category option is specified, override the config
+    if args.category:
+        category = args.category
+
+    # If no category is specified, set it to None
+    if not category:
+        category = None
+
+    # Load logtag files and store the tags
+    logtag = load_logtag_file(args.config)
 
     # Initialize a list to hold the processed log messages
-    log_messages = []
+    message = []
 
     # Helper function to format and store log messages based on the config
-    def print_tp(msgs: list, line: Line) -> None:
+    def append_message(msgs: list[MatchedTag], line: Line) -> None:
         line_message = {}
         for col in column:
             if not col['enable']:
@@ -184,34 +218,39 @@ def main():
             title = col['display']
             match col['name']:
                 case 'TAG':
-                    line_message[title] = ', '.join([msg.value for msg in msgs])
+                    line_message[title] = ', '.join([msg.msg for msg in msgs])
                 case 'CATEGORY':
                     line_message[title] = ', '.join([msg.category for msg in msgs])
                 case 'FILE':
-                    line_message[title] = line.file
+                    line_message[title] = line.file_path
                 case 'LOG':
-                    line_message[title] = line.line
-        log_messages.append(line_message)
+                    line_message[title] = line.log_line
+        message.append(line_message)
 
     # Process each line in the log files to apply tags
-    for line in all_file:
-        msg = []
-        for ktag, vtag in tag.items():
-            for key, value in vtag.items():
-                if key in line.line:
-                    msg.append(Tag(key, value, ktag))
+    for line in logs.lines:
+        msg: list[MatchedTag] = []
+        for tag_category, kv in logtag.items():
+            # Skip if the category is specified and the tag category is not in the category list
+            if category and tag_category not in category:
+                continue
+
+            # Check if the word in the tag category is in the log line
+            for word, kmsg in kv.items():
+                if word in line.log_line:
+                    msg.append(MatchedTag(tag_category, word, kmsg))
 
         # If the unique option is specified, only process lines with tags
         if args.uniq:
             if len(msg) > 0:
-                print_tp(msg, line)
+                append_message(msg, line)
             continue
 
         else:
-            print_tp(msg, line)
+            append_message(msg, line)
 
     # Convert the processed log messages into a table format
-    table = tabulate(log_messages, headers='keys', tablefmt='plain')
+    table = tabulate(message, headers='keys', tablefmt='plain')
 
     # Print the formatted log messages
     if not args.hidden:
