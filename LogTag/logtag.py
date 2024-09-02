@@ -7,45 +7,50 @@ import hjson
 from tabulate import tabulate
 
 
-# Define the directory for configuration files
 DOTDIR = '.logtag'
 
-# Define different paths for the current directory, working directory, and home directory
 PWD = os.getcwd()
 CWD = os.path.dirname(os.path.abspath(__file__))
 HOME = os.path.expanduser('~')
 
 
-class Line:
-    def __init__(self, file_path: str, log_line: str):
+class LogLine:
+    def __init__(self, file_path: str, line: str):
         self.file_path = file_path
-        self.log_line = log_line
+        self.line = line
 
 
 class Log:
     def __init__(self):
-        self.lines: list[Line] = []
+        self.lines: list[LogLine] = []
 
-    def append(self, file_path: str, line: list) -> None:
-        self.lines += [Line(file_path, l.rstrip()) for l in line]
+    def append(self, file_path: str, lines: list[str]) -> None:
+        self.lines += [LogLine(file_path, line.rstrip()) for line in lines]
 
     def soft(self) -> None:
-        self.lines = sorted(self.lines, key=lambda line: line.log_line)
+        self.lines = sorted(self.lines, key=lambda line: line.line)
 
 
 class MatchedTag:
-    def __init__(self, category: str, word: str, msg: str):
+    def __init__(self, category: str, keyword: str, message: str):
         self.category = category
-        self.word = word
-        self.msg = msg
+        self.keyword = keyword
+        self.message = message
 
 
-def read_log_files(file_list: list) -> Log:
+def read_log_files(arg_files: list[str]) -> Log:
     log = Log()
-    for file in file_list:
+
+    def read_file(file: str) -> Log:
         with open(file, 'r', encoding='utf-8') as f:
             line = f.readlines()
             log.append(file, line)
+
+    for arg_file in arg_files:
+        files = glob.glob(arg_file)
+        for file in files:
+            read_file(file)
+
     return log
 
 
@@ -147,12 +152,8 @@ def load_logtag_file(arg_dir: str) -> dict:
 
 
 def main():
-    '''
-    Main function to process log messages and add tags
-    '''
     parser = argparse.ArgumentParser(description='LogTag adds tags to log messages.')
-    parser.add_argument('files', type=str, nargs='*', help='Files to add tags.')
-    parser.add_argument('-f', '--file', type=str, nargs='+', help='Files to add tags.')
+    parser.add_argument('files', type=str, nargs='+', help='Files to add tags.')
     parser.add_argument('-c', '--category', type=str, nargs="*", help='Enable tag category.')
     parser.add_argument('-o', '--out', type=str, help='Output file.')
     parser.add_argument('-s', '--sort', action='store_true', help='Sort log messages.')
@@ -161,86 +162,60 @@ def main():
     parser.add_argument('--config', type=str, help='Config directory.')
     args = parser.parse_args()
 
-    # If --file/-f is used, override positional arguments
-    if args.file:
-        file_pattern_list = args.file
-    else:
-        file_pattern_list = args.files
-
-    # If no files are provided, print an error message and exit
-    if not file_pattern_list:
-        print('Error: No input files. Use -f or provide file arguments.')
+    if not args.files:
+        print("Error: No files provided.")
         sys.exit(1)
 
-    # Join all log messages from the provided files
-    file_list = []
-    for file_pattern in file_pattern_list:
-        glob_file_list = glob.glob(file_pattern)
-        for glob_file in glob_file_list:
-            file_list.append(glob_file)
+    logs = read_log_files(args.files)
 
-    # Read log files and store log messages
-    logs = read_log_files(file_list)
-
-    # Sort log messages if the sort option is specified
     if args.sort:
         logs.soft()
 
-    # Load configuration, tags from .logtag files
-    config = load_config_file(args.config)
-
-    # Extract the column configuration display settings
-    column = config.get('column', [])
-
-    # Extract the category configuration display settings
-    category = config.get('category', [])
-
-    # If the category option is specified, override the config
-    if args.category:
-        category = args.category
-
-    # If no category is specified, set it to None
-    if not category:
-        category = None
-
-    # Load logtag files and store the tags
     logtag = load_logtag_file(args.config)
 
-    # Initialize a list to hold the processed log messages
+    config = load_config_file(args.config)
+    config_column = config.get('column', [])
+    config_category = config.get('category', [])
+
+    if args.category:
+        config_category = args.category
+
+    if not config_category:
+        config_category = None
+
     message = []
 
-    # Helper function to format and store log messages based on the config
-    def append_message(msgs: list[MatchedTag], line: Line) -> None:
-        line_message = {}
-        for col in column:
-            if not col['enable']:
-                continue
-            title = col['display']
-            match col['name']:
-                case 'TAG':
-                    line_message[title] = ', '.join([msg.msg for msg in msgs])
-                case 'CATEGORY':
-                    line_message[title] = ', '.join([msg.category for msg in msgs])
-                case 'FILE':
-                    line_message[title] = line.file_path
-                case 'LOG':
-                    line_message[title] = line.log_line
-        message.append(line_message)
+    def append_message(matched_tags: list[MatchedTag], line: LogLine) -> None:
+        message_line = {}
 
-    # Process each line in the log files to apply tags
+        for column in config_column:
+            if not column['enable']:
+                continue
+
+            title = column['display']
+
+            match column['name']:
+                case 'TAG':
+                    message_line[title] = ', '.join([msg.message for msg in matched_tags])
+                case 'CATEGORY':
+                    message_line[title] = ', '.join([msg.category for msg in matched_tags])
+                case 'FILE':
+                    message_line[title] = line.file_path
+                case 'LOG':
+                    message_line[title] = line.line
+
+        message.append(message_line)
+
     for line in logs.lines:
         msg: list[MatchedTag] = []
         for tag_category, kv in logtag.items():
-            # Skip if the category is specified and the tag category is not in the category list
-            if category and tag_category not in category:
+            if config_category and tag_category not in config_category:
                 continue
 
-            # Check if the word in the tag category is in the log line
             for word, kmsg in kv.items():
-                if word in line.log_line:
+                if word in line.line:
                     msg.append(MatchedTag(tag_category, word, kmsg))
 
-        # If the unique option is specified, only process lines with tags
         if args.uniq:
             if len(msg) > 0:
                 append_message(msg, line)
@@ -249,20 +224,16 @@ def main():
         else:
             append_message(msg, line)
 
-    # Convert the processed log messages into a table format
     table = tabulate(message, headers='keys', tablefmt='plain')
 
-    # Print the formatted log messages
     if not args.hidden:
         print(table)
 
-    # Write the formatted log messages to an output file if specified
     if args.out:
         with open(args.out, 'w', encoding='utf-8') as f:
             f.write(table)
             f.write('\n')
 
 
-# Entry point of the script
 if __name__ == '__main__':
     main()
