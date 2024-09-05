@@ -5,6 +5,7 @@ import re
 import sys
 import hjson
 from tabulate import tabulate
+from typing import Callable
 
 
 DOTDIR = '.logtag'
@@ -14,21 +15,10 @@ CWD = os.path.dirname(os.path.abspath(__file__))
 HOME = os.path.expanduser('~')
 
 
-class LogLine:
+class LineEx:
     def __init__(self, file_path: str, line: str):
         self.file_path = file_path
         self.line = line
-
-
-class Log:
-    def __init__(self):
-        self.lines: list[LogLine] = []
-
-    def append(self, file_path: str, lines: list[str]) -> None:
-        self.lines += [LogLine(file_path, line.rstrip()) for line in lines]
-
-    def soft(self) -> None:
-        self.lines = sorted(self.lines, key=lambda line: line.line)
 
 
 class MatchedTag:
@@ -38,117 +28,120 @@ class MatchedTag:
         self.message = message
 
 
-def read_log_files(arg_files: list[str]) -> Log:
-    log = Log()
+class LoadConfig:
+    def __init__(self, args: argparse.Namespace):
+        self.settings = self._load_settings(args)
+        self.tags = self._load_tags(args)
+        self.columns = self._get_column(args)
+        self.category = self._get_category(args)
 
-    def read_file(file: str) -> Log:
-        with open(file, 'r', encoding='utf-8') as f:
-            line = f.readlines()
-            log.append(file, line)
+    def _get_column(self, args: argparse.Namespace) -> list[str]:
+        column = self.settings.get('column', [])
+        return column
 
-    for arg_file in arg_files:
-        files = glob.glob(arg_file)
-        for file in files:
-            read_file(file)
+    def _get_category(self, args: argparse.Namespace) -> list[str]:
+        category = self.settings.get('category', [])
 
-    return log
+        if args.category:
+            category = args.category
 
+        if not category:
+            category = None
 
-def merge(configs: dict) -> dict:
-    if not configs:
-        return {}
+        return category
 
-    merge_config = {}
-    for config in configs:
-        if not config:
-            continue
-        merge_config.update(config)
-    return merge_config
+    def _load_settings(self, args: argparse.Namespace) -> dict:
+        def _load_file(file_path: str) -> dict:
+            if not os.path.exists(file_path):
+                return {}
+            try:
+                with open(file_path, 'r', encoding='utf-8') as file:
+                    return hjson.load(file)
+            except hjson.JSONDecodeError:
+                print(f"Error: Failed to decode JSON from {file_path}.")
+                return {}
 
+        def _load_impl(directory: str) -> dict:
+            if not directory:
+                return {}
 
-def load_files(directory: str, file_pattern: str, load_file) -> dict:
-    if not os.path.exists(directory) or not os.listdir(directory):
-        return {}
+            config = self._load_directory(directory, r'^config\.(json|hjson)$', _load_file)
+            return config
 
-    file_regex = re.compile(file_pattern)
+        return self._load_directories(args, _load_impl)
 
-    configs = []
-    files = reversed(os.listdir(directory))
-    for file in files:
-        if file_regex.match(file):
-            filepath = os.path.join(directory, file)
-            configs.append(load_file(filepath))
+    def _load_tags(self, args: argparse.Namespace) -> dict:
+        def _cut_out_category(file_path: str) -> str:
+            match = re.match(r'^[0-9]+-(.*)\.(json|hjson)$', file_path)
+            if match:
+                return match.group(1)
+            return None
 
-    merge_config = merge(configs)
-    return merge_config
+        def _load_file(file_path: str) -> dict:
+            if not os.path.exists(file_path):
+                return {}
 
+            try:
+                filename = os.path.basename(file_path)
+                category = _cut_out_category(filename)
+                with open(file_path, 'r', encoding='utf-8') as file:
+                    logtag = hjson.load(file)
+                    config = {category: logtag}
+                    return config
+            except hjson.JSONDecodeError:
+                print(f"Error: Failed to decode JSON from {file_path}.")
+                return {}
 
-def load_config_file(arg_dir: str) -> dict:
-    def load_file(file_path: str) -> dict:
-        if not os.path.exists(file_path):
-            return {}
-        try:
-            with open(file_path, 'r', encoding='utf-8') as file:
-                return hjson.load(file)
-        except hjson.JSONDecodeError:
-            print(f"Error: Failed to decode JSON from {file_path}.")
-            return {}
+        def _load_impl(directory: str) -> dict:
+            if not directory:
+                return {}
 
-    configs = []
-
-    def load(directory: str) -> dict:
-        if directory:
-            config = load_files(directory, r'^config\.(json|hjson)$', load_file)
-            configs.append(config)
-
-    load(arg_dir)
-    load(os.path.join(CWD, DOTDIR))
-    load(os.path.join(HOME, DOTDIR))
-    load(os.path.join(PWD, DOTDIR))
-
-    merge_config = merge(configs)
-    return merge_config
-
-
-def load_logtag_file(arg_dir: str) -> dict:
-    def cut_out_category(file_path: str) -> str:
-        match = re.match(r'^[0-9]+-(.*)\.(json|hjson)$', file_path)
-        if match:
-            return match.group(1)
-        return None
-
-    def load_file(file_path: str) -> dict:
-        if not os.path.exists(file_path):
-            return {}
-
-        try:
-            filename = os.path.basename(file_path)
-            category = cut_out_category(filename)
-            with open(file_path, 'r', encoding='utf-8') as file:
-                logtag = hjson.load(file)
-                config = {category: logtag}
-                return config
-        except hjson.JSONDecodeError:
-            print(f"Error: Failed to decode JSON from {file_path}.")
-            return {}
-
-    configs = []
-
-    def load(directory: str):
-        if directory:
             directory = os.path.join(directory, 'logtag')
             if not os.path.exists(directory):
-                return
-            config = load_files(directory, r'^[0-9]+-.*\.(json|hjson)$', load_file)
-            configs.append(config)
+                return {}
 
-    load(arg_dir)
-    load(os.path.join(CWD, DOTDIR))
-    load(os.path.join(HOME, DOTDIR))
-    load(os.path.join(PWD, DOTDIR))
+            config = self._load_directory(directory, r'^[0-9]+-.*\.(json|hjson)$', _load_file)
+            return config
 
-    merge_config = merge(configs)
-    return merge_config
+        return self._load_directories(args, _load_impl)
+
+    def _load_directories(self, args: argparse.Namespace, load: Callable[[str], dict]) -> dict:
+        configs = []
+        configs.append(load(args.config))
+        configs.append(load(os.path.join(CWD, DOTDIR)))
+        configs.append(load(os.path.join(HOME, DOTDIR)))
+        configs.append(load(os.path.join(PWD, DOTDIR)))
+
+        merge_config = self._merge(configs)
+        return merge_config
+
+    def _load_directory(self, directory: str, file_pattern: str, load_file: Callable[[str], dict]) -> dict:
+        if not os.path.exists(directory) or not os.listdir(directory):
+            return {}
+
+        file_regex = re.compile(file_pattern)
+
+        configs = []
+        files = reversed(os.listdir(directory))
+        for file in files:
+            if file_regex.match(file):
+                filepath = os.path.join(directory, file)
+                configs.append(load_file(filepath))
+
+        merge_config = self._merge(configs)
+        return merge_config
+
+    def _merge(self, configs: dict) -> dict:
+        if not configs:
+            return {}
+
+        merge_config = {}
+        for config in configs:
+            if not config:
+                continue
+            merge_config.update(config)
+
+        return merge_config
 
 
 def main():
@@ -160,69 +153,70 @@ def main():
     parser.add_argument('-u', '--uniq', action='store_true', help='Remove duplicate log messages.')
     parser.add_argument('--hidden', action='store_true', help='Display hidden.')
     parser.add_argument('--config', type=str, help='Config directory.')
-    args = parser.parse_args()
+    args: argparse.Namespace = parser.parse_args()
 
     if not args.files:
         print("Error: No files provided.")
         sys.exit(1)
 
-    logs = read_log_files(args.files)
+    def _load_log(args: argparse.Namespace) -> list[LineEx]:
+        def _load_file(file: str) -> list[LineEx]:
+            if not os.path.exists(file):
+                return []
 
-    if args.sort:
-        logs.soft()
+            with open(file, 'r', encoding='utf-8') as fp:
+                line = fp.readlines()
+                return [LineEx(file, line.rstrip()) for line in line]
 
-    logtag = load_logtag_file(args.config)
+        lines: list[LineEx] = []
 
-    config = load_config_file(args.config)
-    config_column = config.get('column', [])
-    config_category = config.get('category', [])
+        for arg_file in args.files:
+            files = glob.glob(arg_file)
 
-    if args.category:
-        config_category = args.category
+            if not files:
+                print(f"Warning: No files matched pattern: {arg_file}")
 
-    if not config_category:
-        config_category = None
+            for file in files:
+                lines += _load_file(file)
 
-    message = []
+        if args.sort:
+            lines = sorted(lines, key=lambda line: line.line)
 
-    def append_message(matched_tags: list[MatchedTag], line: LogLine) -> None:
-        message_line = {}
+        return lines
 
-        for column in config_column:
+    def _message(columns: list[dict[str, str]], line: LineEx, matched_tags: list[MatchedTag]) -> dict[str, str]:
+        message: dict[str, str] = {}
+        for column in columns:
             if not column['enable']:
                 continue
-
             title = column['display']
-
             match column['name']:
                 case 'TAG':
-                    message_line[title] = ', '.join([msg.message for msg in matched_tags])
+                    message[title] = ', '.join([matched_tag.message for matched_tag in matched_tags])
                 case 'CATEGORY':
-                    message_line[title] = ', '.join([msg.category for msg in matched_tags])
+                    message[title] = ', '.join([matched_tag.category for matched_tag in matched_tags])
                 case 'FILE':
-                    message_line[title] = line.file_path
+                    message[title] = line.file_path
                 case 'LOG':
-                    message_line[title] = line.line
+                    message[title] = line.line
+        return message
 
-        message.append(message_line)
+    logs = _load_log(args)
+    config = LoadConfig(args)
 
-    for line in logs.lines:
-        msg: list[MatchedTag] = []
-        for tag_category, kv in logtag.items():
-            if config_category and tag_category not in config_category:
+    message: list[dict[str, str]] = []
+    for line in logs:
+        matched_tags: list[MatchedTag] = []
+        for tag_category, kv in config.tags.items():
+            if config.category and (tag_category not in config.category):
                 continue
 
             for word, kmsg in kv.items():
                 if word in line.line:
-                    msg.append(MatchedTag(tag_category, word, kmsg))
+                    matched_tags.append(MatchedTag(tag_category, word, kmsg))
 
-        if args.uniq:
-            if len(msg) > 0:
-                append_message(msg, line)
-            continue
-
-        else:
-            append_message(msg, line)
+        if not args.uniq or len(matched_tags) > 0:
+            message.append(_message(config.columns, line, matched_tags))
 
     table = tabulate(message, headers='keys', tablefmt='plain')
 
