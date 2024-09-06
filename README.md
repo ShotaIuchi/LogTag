@@ -9,6 +9,7 @@ LogTag is a tool for adding tags to log messages. This script reads log messages
 - Sort log messages
 - Remove duplicate log messages
 - Flexible customization through configuration files
+- Supports regular expressions for tag matching
 
 ## Installation
 
@@ -33,67 +34,69 @@ pip install -e .
 Run the script as follows:
 
 ```sh
-python logtag.py -f [log_file1] [log_file2] ... -o [output_file] [options]
+logtag [files] -o [output_file] [options]
 ```
+
+### Arguments
+
+- `files`: Specify one or more log files to process. Wildcards are supported (e.g., `*.txt` to match all `.txt` files).
 
 ### Options
 
-- `-f`, `--file`: Specify log files to add tags. Multiple files can be specified.
+- `-c`, `--category`: Specify one or more tag categories to filter log messages by. If not provided, all categories will be used.
 - `-o`, `--out`: Specify the output file. If not specified, the result will be printed to the standard output.
-- `-s`, `--sort`: Sort log messages.
-- `-u`, `--uniq`: Remove duplicate log messages.
-- `--config`: Specify the configuration file.
+- `-s`, `--sort`: Sort the log messages by their content.
+- `-u`, `--uniq`: Remove duplicate log messages. Only unique messages will be kept.
+- `--hidden`: Display hidden log messages. By default, hidden log messages are not shown.
+- `--config`: Specify a custom configuration directory containing `config.hjson` and tag files.
 
 ## Configuration Files
 
-Configuration files are in JSON format and are structured as follows:
+Configuration files are in HJSON format (which allows comments and more flexible syntax than JSON) and are structured as follows:
 
-### `config.json`
-
-```json
-{
-  "space": 20
-}
-```
-
-- `space`: Specify the space between the log message and the tag.
-
-### Tag File (`tag.json`)
+### `config.hjson`
 
 ```json
 {
-  "ERROR": "Error",
-  "INFO": "Info"
+  "column": [
+    { "name": "TAG", "display": "Tag", "enable": true },
+    { "name": "CATEGORY", "display": "Category", "enable": true },
+    { "name": "FILE", "display": "File", "enable": true },
+    { "name": "LOG", "display": "Log Message", "enable": true }
+  ]
 }
 ```
 
-- Specify the tags corresponding to specific keywords in the log messages.
+- `column`: Specify the columns to display in the output, and their settings (e.g., visibility and display name).
 
-### Filter File (`filter.json`)
+### Tag File (`logtag.hjson`)
 
 ```json
 {
-  "display": ["ERROR", "WARN"]
+  "ERROR": "Error detected",
+  "INFO": "Informational message",
+  "^WARN.*": "Warning message"
 }
 ```
 
-- Specify the filter for displaying log messages.
+- Tags define specific keywords and their associated messages. When these keywords appear in the log, the corresponding message is added as a tag.
+- **Regular expressions** are supported for tag matching. For example, the tag `^WARN.*` will match any log message starting with "WARN".
 
-## Priority
+### Directory Structure
 
-The search path for configuration files is determined by the following priority:
+The tool looks for configuration files in the following priority order:
 
-1. Directory specified in the command line
-2. User's home directory
-3. Current working directory
-4. Directory where the script is located
+1. The directory specified by the `--config` option
+2. The current working directory
+3. The user's home directory
+4. The directory where the script is located
 
 ## Example
 
-Below is an example of adding tags to log files `log1.txt` and `log2.txt`, and outputting the result to `output.txt`:
+Below is an example of adding tags to log files, sorting the log messages, removing duplicates, and outputting the result to `output.txt`. Wildcards (`*.txt`) can be used to match multiple files:
 
 ```sh
-python logtag.py -f log1.txt log2.txt -o output.txt --sort --uniq --config ./config
+python logtag.py *.txt -o output.txt --sort --uniq --config ./config
 ```
 
-This command reads the specified log files, adds tags, sorts, and removes duplicates, and then outputs the result to `output.txt`.
+This command reads all `.txt` files in the current directory, adds tags, sorts and removes duplicates, and then outputs the result to `output.txt`. If a custom configuration directory is provided (via `--config`), the tool will look for `config.hjson` and `logtag.hjson` in that directory.
