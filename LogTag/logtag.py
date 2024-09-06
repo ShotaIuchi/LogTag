@@ -21,6 +21,19 @@ class LineEx:
         self.line = line
 
 
+class TagEx:
+    def __init__(self, keyword: str, message: str):
+        self.keyword = keyword
+        self.message = message
+        self.pattern = re.compile(keyword)
+
+
+class TagCategory:
+    def __init__(self, category: str, tags: list[TagEx]):
+        self.category = category
+        self.tags = tags
+
+
 class MatchedTag:
     def __init__(self, category: str, keyword: str, message: str):
         self.category = category
@@ -31,7 +44,7 @@ class MatchedTag:
 class LoadConfig:
     def __init__(self, args: argparse.Namespace):
         self.settings = self._load_settings(args)
-        self.tags = self._load_tags(args)
+        self.tags: list[TagCategory] = self._load_tags(args)
         self.columns = self._get_column(args)
         self.category = self._get_category(args)
 
@@ -70,7 +83,7 @@ class LoadConfig:
 
         return self._load_directories(args, _load_impl)
 
-    def _load_tags(self, args: argparse.Namespace) -> dict:
+    def _load_tags(self, args: argparse.Namespace) -> list[TagCategory]:
         def _cut_out_category(file_path: str) -> str:
             match = re.match(r'^[0-9]+-(.*)\.(json|hjson)$', file_path)
             if match:
@@ -103,7 +116,17 @@ class LoadConfig:
             config = self._load_directory(directory, r'^[0-9]+-.*\.(json|hjson)$', _load_file)
             return config
 
-        return self._load_directories(args, _load_impl)
+        def _convert_to_tagcategory(config: dict) -> list[TagCategory]:
+            tagcategories = []
+            for category, tags in config.items():
+                tagexs = []
+                for keyword, message in tags.items():
+                    tagexs.append(TagEx(keyword, message))
+                tagcategories.append(TagCategory(category, tagexs))
+            return tagcategories
+
+        configs = self._load_directories(args, _load_impl)
+        return _convert_to_tagcategory(configs)
 
     def _load_directories(self, args: argparse.Namespace, load: Callable[[str], dict]) -> dict:
         configs = []
@@ -207,13 +230,12 @@ def main():
     message: list[dict[str, str]] = []
     for line in logs:
         matched_tags: list[MatchedTag] = []
-        for tag_category, kv in config.tags.items():
-            if config.category and (tag_category not in config.category):
+        for tag_category in config.tags:
+            if config.category and (tag_category.category not in config.category):
                 continue
-
-            for word, kmsg in kv.items():
-                if word in line.line:
-                    matched_tags.append(MatchedTag(tag_category, word, kmsg))
+            for tag_tag in tag_category.tags:
+                if tag_tag.pattern.search(line.line):
+                    matched_tags.append(MatchedTag(tag_category.category, tag_tag.keyword, tag_tag.message))
 
         if not args.uniq or len(matched_tags) > 0:
             message.append(_message(config.columns, line, matched_tags))
