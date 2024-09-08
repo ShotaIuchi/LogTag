@@ -15,7 +15,7 @@ LogTag is a tool for adding tags to log messages. This script reads log messages
 
 ### Install from PyPI
 
-**TODO:** This package is not yet registered on PyPI.
+This package is not yet registered on PyPI.
 
 ```sh
 pip install logtag
