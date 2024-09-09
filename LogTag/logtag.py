@@ -4,6 +4,7 @@ import os
 import re
 import sys
 import hjson
+import LogTag
 from tabulate import tabulate
 from typing import Callable
 
@@ -176,6 +177,7 @@ def main():
     parser.add_argument('-u', '--uniq', action='store_true', help='Remove duplicate log messages.')
     parser.add_argument('--hidden', action='store_true', help='Display hidden.')
     parser.add_argument('--config', type=str, help='Config directory.')
+    parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {LogTag.__version__}')
     args: argparse.Namespace = parser.parse_args()
 
     if not args.files:
