@@ -19,7 +19,7 @@ setup(
     packages=find_packages(),
     install_requires=[
         'tabulate',
-        'hjson',
+        'pyyaml',
     ],
     entry_points={
         'console_scripts': [

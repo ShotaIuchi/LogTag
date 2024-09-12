@@ -3,7 +3,7 @@ import glob
 import os
 import re
 import sys
-import hjson
+import yaml
 import LogTag
 from tabulate import tabulate
 from typing import Callable
@@ -23,10 +23,13 @@ class LineEx:
 
 
 class TagEx:
-    def __init__(self, keyword: str, message: str):
+    def __init__(self, keyword: str, message: str, regex: bool = True):
         self.keyword = keyword
         self.message = message
-        self.pattern = re.compile(keyword)
+        if regex:
+            self.pattern = re.compile(keyword)
+        else:
+            self.pattern = None
 
 
 class TagCategory:
@@ -70,23 +73,23 @@ class LoadConfig:
                 return {}
             try:
                 with open(file_path, 'r', encoding='utf-8') as file:
-                    return hjson.load(file)
-            except hjson.JSONDecodeError:
-                print(f"Error: Failed to decode JSON from {file_path}.")
+                    return yaml.safe_load(file)
+            except yaml.YAMLError:
+                print(f"Error: Failed to decode config from {file_path}.")
                 return {}
 
         def _load_impl(directory: str) -> dict:
             if not directory:
                 return {}
 
-            config = self._load_directory(directory, r'^config\.(json|hjson)$', _load_file)
+            config = self._load_directory(directory, r'^config.yaml$', _load_file)
             return config
 
         return self._load_directories(args, _load_impl)
 
     def _load_tags(self, args: argparse.Namespace) -> list[TagCategory]:
         def _cut_out_category(file_path: str) -> str:
-            match = re.match(r'^[0-9]+-(.*)\.(json|hjson)$', file_path)
+            match = re.match(r'^[0-9]+-(.*)\.yaml$', file_path)
             if match:
                 return match.group(1)
             return None
@@ -99,11 +102,11 @@ class LoadConfig:
                 filename = os.path.basename(file_path)
                 category = _cut_out_category(filename)
                 with open(file_path, 'r', encoding='utf-8') as file:
-                    logtag = hjson.load(file)
+                    logtag = yaml.safe_load(file)
                     config = {category: logtag}
                     return config
-            except hjson.JSONDecodeError:
-                print(f"Error: Failed to decode JSON from {file_path}.")
+            except yaml.YAMLError:
+                print(f"Error: Failed to decode config from {file_path}.")
                 return {}
 
         def _load_impl(directory: str) -> dict:
@@ -114,15 +117,15 @@ class LoadConfig:
             if not os.path.exists(directory):
                 return {}
 
-            config = self._load_directory(directory, r'^[0-9]+-.*\.(json|hjson)$', _load_file)
+            config = self._load_directory(directory, r'^[0-9]+-.*\.yaml$', _load_file)
             return config
 
         def _convert_to_tagcategory(config: dict) -> list[TagCategory]:
             tagcategories = []
             for category, tags in config.items():
                 tagexs = []
-                for keyword, message in tags.items():
-                    tagexs.append(TagEx(keyword, message))
+                for tag in tags:
+                    tagexs.append(TagEx(tag['keyword'], tag['message'], tag.get('regex', False)))
                 tagcategories.append(TagCategory(category, tagexs))
             return tagcategories
 
@@ -236,8 +239,12 @@ def main():
             if config.category and (tag_category.category not in config.category):
                 continue
             for tag_tag in tag_category.tags:
-                if tag_tag.pattern.search(line.line):
-                    matched_tags.append(MatchedTag(tag_category.category, tag_tag.keyword, tag_tag.message))
+                if tag_tag.pattern is not None:
+                    if tag_tag.pattern.search(line.line):
+                        matched_tags.append(MatchedTag(tag_category.category, tag_tag.keyword, tag_tag.message))
+                else:
+                    if tag_tag.keyword in line.line:
+                        matched_tags.append(MatchedTag(tag_category.category, tag_tag.keyword, tag_tag.message))
 
         if not args.uniq or len(matched_tags) > 0:
             message.append(_message(config.columns, line, matched_tags))

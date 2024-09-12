@@ -1,0 +1,5 @@
+- keyword: "https://github.com/ShotaIuchi/LogTag.git"
+  message: "repository"
+- keyword: "shotaiuchi"
+  message: "なまえ"
+  regex: false
