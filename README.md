@@ -48,39 +48,61 @@ logtag [files] -o [output_file] [options]
 - `-s`, `--sort`: Sort the log messages by their content.
 - `-u`, `--uniq`: Remove duplicate log messages. Only unique messages will be kept.
 - `--hidden`: Display hidden log messages. By default, hidden log messages are not shown.
-- `--config`: Specify a custom configuration directory containing `config.hjson` and tag files.
+- `--config`: Specify a custom configuration directory containing `config.yaml` and tag files.
 
-## Configuration Files
+## Configuration Files Overview
 
-Configuration files are in HJSON format (which allows comments and more flexible syntax than JSON) and are structured as follows:
+The configuration files for this system are structured in YAML format and consist of two main parts: the general settings (`config.yaml`) and category-specific log tag files (`lotgag/<number>-<category>.yaml`).
 
-### `config.hjson`
+### `config.yaml`
 
-```json
-{
-  "column": [
-    { "name": "TAG", "display": "Tag", "enable": true },
-    { "name": "CATEGORY", "display": "Category", "enable": true },
-    { "name": "FILE", "display": "File", "enable": true },
-    { "name": "LOG", "display": "Log Message", "enable": true }
-  ]
-}
+```yaml
+# Settings for the columns to be displayed in the log output.
+column:
+  - name: TAG
+    display: TAG
+    enable: true
+  - name: CATEGORY
+    display: CATEGORY
+    enable: true
+  - name: FILE
+    display: LOG-FILE
+    enable: true
+  - name: LOG
+    display: LOG
+    enable: true
+
+# Enable tag categories for filtering logs.
+# Specify categories in the format "<tag>-<subtag>".
+category:
+  # - "default"
+  # - "android"
+  # - "android-kernel"
+  # - "etc..."
 ```
 
-- `column`: Specify the columns to display in the output, and their settings (e.g., visibility and display name).
+- **`column`**: Defines the columns to be shown in the log output, including whether they are enabled and the display name for each column.
+  - `name`: The internal name of the column.
+  - `display`: The display name that will be shown in the log output.
+  - `enable`: Whether the column should be shown (`true` to show, `false` to hide).
+- **`category`**: Defines log tag categories for filtering purposes. You can add or remove categories depending on your needs. If all categories are valid, leave this section empty.
 
-### Tag File (`logtag.hjson`)
+### Tag File (`lotgag/<number>-<category>.yaml`)
 
-```json
-{
-  "ERROR": "Error detected",
-  "INFO": "Informational message",
-  "^WARN.*": "Warning message"
-}
+Each category can have its own log tag configuration file, structured as follows:
+
+```yaml
+- keyword: hoge-log
+  message: hoge-message
+- keyword: fuga.*log
+  message: fuga-message
+  regex: true
 ```
 
-- Tags define specific keywords and their associated messages. When these keywords appear in the log, the corresponding message is added as a tag.
-- **Regular expressions** are supported for tag matching. For example, the tag `^WARN.*` will match any log message starting with "WARN".
+- **`<category>`**: The file name corresponds to the category name, and each file can define multiple keywords for that specific category.
+- **`keyword`**: The specific log keyword to be matched.
+- **`message`**: A description or explanation for the keyword.
+- **`regex`**: Specifies if the keyword should be interpreted as a regular expression (`true`). If omitted, the keyword will be treated as a literal string.
 
 ### Directory Structure
 
@@ -99,4 +121,4 @@ Below is an example of adding tags to log files, sorting the log messages, remov
 python logtag.py *.txt -o output.txt --sort --uniq --config ./config
 ```
 
-This command reads all `.txt` files in the current directory, adds tags, sorts and removes duplicates, and then outputs the result to `output.txt`. If a custom configuration directory is provided (via `--config`), the tool will look for `config.hjson` and `logtag.hjson` in that directory.
+This command reads all `.txt` files in the current directory, adds tags, sorts and removes duplicates, and then outputs the result to `output.txt`. If a custom configuration directory is provided (via `--config`), the tool will look for `config.yaml` and `logtag.yaml` in that directory.

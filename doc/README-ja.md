@@ -13,7 +13,7 @@ LogTag は、ログメッセージにタグを追加するためのツールで�
 
 ## インストール
 
-### PyPI からインストール
+### PyPI からのインストール
 
 このパッケージはまだ PyPI に登録されていません。
 
@@ -50,37 +50,59 @@ logtag [files] -o [output_file] [options]
 - `--hidden`: 隠しログメッセージを表示します。デフォルトでは隠しメッセージは表示されません。
 - `--config`: `config.hjson`やタグファイルを含むカスタム設定ディレクトリを指定します。
 
-## 設定ファイル
+## 設定ファイルの概要
 
-設定ファイルは HJSON 形式で記述されており、JSON よりも柔軟でコメントを記述できます。以下のような構成です。
+このシステムの設定ファイルは YAML 形式で構成されており、一般設定ファイル（`config.yaml`）とカテゴリ別のログタグファイル（`lotgag/<number>-<category>.yaml`）の 2 つの部分で構成されています。
 
-### `config.hjson`
+### `config.yaml`
 
-```json
-{
-  "column": [
-    { "name": "TAG", "display": "Tag", "enable": true },
-    { "name": "CATEGORY", "display": "Category", "enable": true },
-    { "name": "FILE", "display": "File", "enable": true },
-    { "name": "LOG", "display": "Log Message", "enable": true }
-  ]
-}
+```yaml
+# ログ出力に表示する列の設定
+column:
+  - name: TAG
+    display: TAG
+    enable: true
+  - name: CATEGORY
+    display: CATEGORY
+    enable: true
+  - name: FILE
+    display: LOG-FILE
+    enable: true
+  - name: LOG
+    display: LOG
+    enable: true
+
+# ログのフィルタリングに使用するタグカテゴリを有効化
+# カテゴリは "<tag>-<subtag>" の形式で指定
+category:
+  # - "default"
+  # - "android"
+  # - "android-kernel"
+  # - "etc..."
 ```
 
-- `column`: 出力時に表示する列とその設定（表示名、列の有効/無効など）を指定します。
+- **`column`**: ログ出力に表示する列を定義します。表示の有無や表示名も設定できます。
+  - `name`: 列の内部名。
+  - `display`: ログ出力に表示される列の名前。
+  - `enable`: 列を表示するかどうか（`true`で表示、`false`で非表示）。
+- **`category`**: ログタグカテゴリをフィルタリングのために定義します。必要に応じてカテゴリを追加・削除できます。すべてのカテゴリを使用する場合は、このセクションを空のままにします。
 
-### タグファイル (`logtag.hjson`)
+### タグファイル (`lotgag/<number>-<category>.yaml`)
 
-```json
-{
-  "ERROR": "エラー検出",
-  "INFO": "情報メッセージ",
-  "^WARN.*": "警告メッセージ"
-}
+各カテゴリには独自のログタグ設定ファイルがあり、次のように構成されます：
+
+```yaml
+- keyword: hoge-log
+  message: hoge-message
+- keyword: fuga.*log
+  message: fuga-message
+  regex: true
 ```
 
-- タグは、特定のキーワードと対応するメッセージを定義します。これらのキーワードがログに出現すると、対応するメッセージがタグとして追加されます。
-- **正規表現**もサポートされています。例えば、`^WARN.*`は"WARN"で始まるすべてのログメッセージにマッチします。
+- **`<category>`**: ファイル名はカテゴリ名に対応しており、各ファイルにはそのカテゴリに属する複数のキーワードを定義できます。
+- **`keyword`**: マッチする特定のログキーワード。
+- **`message`**: キーワードの説明。
+- **`regex`**: キーワードを正規表現として解釈するかどうか（`true`で正規表現として解釈）。省略した場合は文字列として扱われます。
 
 ### ディレクトリ構造
 
@@ -89,7 +111,7 @@ logtag [files] -o [output_file] [options]
 1. コマンドラインで指定されたディレクトリ
 2. カレントワーキングディレクトリ
 3. ユーザーのホームディレクトリ
-4. スクリプトが存在するディレクトリ
+4. スクリプトが配置されているディレクトリ
 
 ## 使用例
 
@@ -99,4 +121,4 @@ logtag [files] -o [output_file] [options]
 python logtag.py *.txt -o output.txt --sort --uniq --config ./config
 ```
 
-このコマンドはカレントディレクトリ内のすべての`.txt`ファイルを読み込み、タグを追加し、ソートし、重複を削除した結果を`output.txt`に出力します。`--config`でカスタム設定ディレクトリを指定した場合、そのディレクトリ内の`config.hjson`と`logtag.hjson`が使用されます。
+このコマンドは、現在のディレクトリ内のすべての `.txt` ファイルを読み込み、タグを追加し、ログメッセージをソートして重複を削除し、結果を `output.txt` に出力します。`--config` オプションでカスタム設定ディレクトリを指定すると、ツールはそのディレクトリ内の `config.yaml` および `logtag.yaml` を参照します。
