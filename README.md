@@ -46,8 +46,8 @@ logtag [files] -o [output_file] [options]
 - `-c`, `--category`: Specify one or more tag categories to filter log messages by. If not provided, all categories will be used.
 - `-o`, `--out`: Specify the output file. If not specified, the result will be printed to the standard output.
 - `-s`, `--sort`: Sort the log messages by their content.
-- `-u`, `--uniq`: Remove duplicate log messages. Only unique messages will be kept.
-- `--hidden`: Display hidden log messages. By default, hidden log messages are not shown.
+- `-u`, `--uniq`: Only tagged messages will be displayed.
+- `--hidden`: Log messages will be hidden. By default, log messages are displayed.
 - `--config`: Specify a custom configuration directory containing `config.yaml` and tag files.
 
 ## Configuration Files Overview
