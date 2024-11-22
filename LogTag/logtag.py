@@ -159,6 +159,8 @@ def main():
     parser.add_argument('-u', '--uniq', action='store_true', help='Remove duplicate log messages.')
     parser.add_argument('--hidden', action='store_true', help='Display hidden.')
     parser.add_argument('--config', type=str, help='Config directory.')
+    parser.add_argument('--stop-first-tag', action='store_true', help='Stop tagging upon hitting the first tag.')
+    parser.add_argument('--stop-first-category', action='store_true', help='Stop tagging upon hitting the first category.')
     parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {LogTag.__version__}')
 
     ARGS: argparse.Namespace = parser.parse_args()
@@ -184,9 +186,17 @@ def main():
                 if km.pattern is not None:
                     if km.pattern.search(line.line):
                         lckm.ckm.append(CategoryKeyMsg(ckm.category, km))
+                        if ARGS.stop_first_tag:
+                            break
                 else:
                     if km.keyword in line.line:
                         lckm.ckm.append(CategoryKeyMsg(ckm.category, km))
+                        if ARGS.stop_first_tag:
+                            break
+
+            if len(lckm.ckm) > 0:
+                if ARGS.stop_first_category or ARGS.stop_first_tag:
+                    break
 
         if not ARGS.uniq or len(lckm.ckm) > 0:
             lineAndCategoryKeyMsgs.append(lckm)
