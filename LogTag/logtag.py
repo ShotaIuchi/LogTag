@@ -16,13 +16,19 @@ CWD = os.path.dirname(os.path.abspath(__file__))
 HOME = os.path.expanduser('~')
 
 
-class LineEx:
-    def __init__(self, file_path: str, line: str):
-        self.file_path = file_path
+class Config:
+    def __init__(self, columns: dict[str], categorys: dict[str]):
+        self.columns = columns
+        self.categorys = categorys
+
+
+class LogLine:
+    def __init__(self, file: str, line: str):
+        self.file = file
         self.line = line
 
 
-class TagEx:
+class KeyMsg:
     def __init__(self, keyword: str, message: str, regex: bool = True):
         self.keyword = keyword
         self.message = message
@@ -32,143 +38,116 @@ class TagEx:
             self.pattern = None
 
 
-class TagCategory:
-    def __init__(self, category: str, tags: list[TagEx]):
+class Category:
+    def __init__(self, priority: int, category: str):
+        self.priority = priority
         self.category = category
-        self.tags = tags
 
 
-class MatchedTag:
-    def __init__(self, category: str, keyword: str, message: str):
+class CategoryKeyMsgs:
+    def __init__(self,  category: Category, kms: list[KeyMsg]):
         self.category = category
-        self.keyword = keyword
-        self.message = message
+        self.kms = kms
 
 
-class LoadConfig:
-    def __init__(self, args: argparse.Namespace):
-        self.settings = self._load_settings(args)
-        self.tags: list[TagCategory] = self._load_tags(args)
-        self.columns = self._get_column(args)
-        self.category = self._get_category(args)
+class CategoryKeyMsg:
+    def __init__(self, category: Category, km: KeyMsg):
+        self.category = category
+        self.km = km
 
-    def _get_column(self, args: argparse.Namespace) -> list[str]:
-        column = self.settings.get('column', [])
-        return column
 
-    def _get_category(self, args: argparse.Namespace) -> list[str]:
-        category = self.settings.get('category', [])
+class LineCategoryKeyMsg:
+    def __init__(self, line: LogLine, ckm: list[CategoryKeyMsg]):
+        self.line = line
+        self.ckm = ckm
 
-        if args.category:
-            category = args.category
 
-        if not category:
-            category = None
+def dot_dirs(ARGS: argparse.Namespace) -> list[str]:
+    dirs = []
+    dirs.append(ARGS.config)
+    dirs.append(os.path.join(PWD, DOTDIR))
+    dirs.append(os.path.join(HOME, DOTDIR))
+    dirs.append(os.path.join(CWD, DOTDIR))
+    return dirs
 
-        return category
 
-    def _load_settings(self, args: argparse.Namespace) -> dict:
-        def _load_file(file_path: str) -> dict:
-            if not os.path.exists(file_path):
-                return {}
-            try:
-                with open(file_path, 'r', encoding='utf-8') as file:
-                    return yaml.safe_load(file)
-            except yaml.YAMLError:
-                print(f"Error: Failed to decode config from {file_path}.")
-                return {}
+def load_config(ARGS: argparse.Namespace) -> Config:
+    dirs = dot_dirs(ARGS=ARGS)
+    for dir in dirs:
+        if not dir:
+            continue
+        if not os.path.exists(dir):
+            continue
 
-        def _load_impl(directory: str) -> dict:
-            if not directory:
-                return {}
+        config_path = os.path.join(dir, 'config.yaml')
+        if os.path.exists(config_path):
+            with open(config_path, 'r', encoding='utf-8') as fp:
+                # first found config file is used
+                loaded_config = yaml.safe_load(fp)
+                config = Config(loaded_config.get('column', []), loaded_config.get('category', []))
+                return config
+    return None
 
-            config = self._load_directory(directory, r'^config.yaml$', _load_file)
-            return config
 
-        return self._load_directories(args, _load_impl)
+def load_ckms(ARGS: argparse.Namespace) -> list[CategoryKeyMsgs]:
+    dirs = dot_dirs(ARGS=ARGS)
+    kms = []
+    match = re.compile(r'(^[0-9]+)-(.*)\.ya*ml$')
 
-    def _load_tags(self, args: argparse.Namespace) -> list[TagCategory]:
-        def _cut_out_category(file_path: str) -> str:
-            match = re.match(r'^[0-9]+-(.*)\.yaml$', file_path)
-            if match:
-                return match.group(1)
-            return None
+    for dir in dirs:
+        if not dir:
+            continue
+        if not os.path.exists(dir):
+            continue
 
-        def _load_file(file_path: str) -> dict:
-            if not os.path.exists(file_path):
-                return {}
+        km_dir = os.path.join(dir, 'logtag')
+        if not os.path.exists(km_dir):
+            continue
 
-            try:
-                filename = os.path.basename(file_path)
-                category = _cut_out_category(filename)
-                with open(file_path, 'r', encoding='utf-8') as file:
-                    logtag = yaml.safe_load(file)
-                    config = {category: logtag}
-                    return config
-            except yaml.YAMLError:
-                print(f"Error: Failed to decode config from {file_path}.")
-                return {}
-
-        def _load_impl(directory: str) -> dict:
-            if not directory:
-                return {}
-
-            directory = os.path.join(directory, 'logtag')
-            if not os.path.exists(directory):
-                return {}
-
-            config = self._load_directory(directory, r'^[0-9]+-.*\.yaml$', _load_file)
-            return config
-
-        def _convert_to_tagcategory(config: dict) -> list[TagCategory]:
-            tagcategories = []
-            for category, tags in config.items():
-                tagexs = []
-                for tag in tags:
-                    tagexs.append(TagEx(tag['keyword'], tag['message'], tag.get('regex', False)))
-                tagcategories.append(TagCategory(category, tagexs))
-            return tagcategories
-
-        configs = self._load_directories(args, _load_impl)
-        return _convert_to_tagcategory(configs)
-
-    def _load_directories(self, args: argparse.Namespace, load: Callable[[str], dict]) -> dict:
-        configs = []
-        configs.append(load(args.config))
-        configs.append(load(os.path.join(CWD, DOTDIR)))
-        configs.append(load(os.path.join(HOME, DOTDIR)))
-        configs.append(load(os.path.join(PWD, DOTDIR)))
-
-        merge_config = self._merge(configs)
-        return merge_config
-
-    def _load_directory(self, directory: str, file_pattern: str, load_file: Callable[[str], dict]) -> dict:
-        if not os.path.exists(directory) or not os.listdir(directory):
-            return {}
-
-        file_regex = re.compile(file_pattern)
-
-        configs = []
-        files = reversed(os.listdir(directory))
-        for file in files:
-            if file_regex.match(file):
-                filepath = os.path.join(directory, file)
-                configs.append(load_file(filepath))
-
-        merge_config = self._merge(configs)
-        return merge_config
-
-    def _merge(self, configs: dict) -> dict:
-        if not configs:
-            return {}
-
-        merge_config = {}
-        for config in configs:
-            if not config:
+        for km_path in os.listdir(km_dir):
+            if not km_path.endswith('.yaml') and not km_path.endswith('.yml'):
                 continue
-            merge_config.update(config)
 
-        return merge_config
+            conifg_data = match.search(km_path)
+            if not conifg_data:
+                continue
+            if conifg_data.end() < 2:
+                continue
+
+            with open(os.path.join(km_dir, km_path), 'r', encoding='utf-8') as fp:
+                loaded_kms = yaml.safe_load(fp)
+                if not loaded_kms:
+                    continue
+
+                category = Category(conifg_data.group(1), conifg_data.group(2))
+                km = [KeyMsg(tag['keyword'], tag['message'], tag.get('regex', False)) for tag in loaded_kms]
+                ckm = CategoryKeyMsgs(category, km)
+                kms.append(ckm)
+
+    kms.sort(key=lambda x: x.category.category)
+    kms.sort(key=lambda x: x.category.priority)
+    return kms
+
+
+def load_log(ARGS: argparse.Namespace) -> list[LogLine]:
+    logs = []
+    for file in ARGS.files:
+        files = glob.glob(file)
+        if not files:
+            print(f"Warning: No files matched pattern: {file}")
+
+        for file in files:
+            if not os.path.exists(file):
+                continue
+
+            with open(file, 'r', encoding='utf-8') as fp:
+                line = fp.readlines()
+                logs += [LogLine(file, line.rstrip()) for line in line]
+
+    if ARGS.sort:
+        logs = sorted(logs, key=lambda log: log.line)
+
+    return logs
 
 
 def main():
@@ -181,81 +160,63 @@ def main():
     parser.add_argument('--hidden', action='store_true', help='Display hidden.')
     parser.add_argument('--config', type=str, help='Config directory.')
     parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {LogTag.__version__}')
-    args: argparse.Namespace = parser.parse_args()
 
-    if not args.files:
+    ARGS: argparse.Namespace = parser.parse_args()
+
+    if not ARGS.files:
         print("Error: No files provided.")
         sys.exit(1)
 
-    def _load_log(args: argparse.Namespace) -> list[LineEx]:
-        def _load_file(file: str) -> list[LineEx]:
-            if not os.path.exists(file):
-                return []
+    CONFIG = load_config(ARGS)
+    KEYMSG = load_ckms(ARGS)
+    LOGLINES = load_log(ARGS)
 
-            with open(file, 'r', encoding='utf-8') as fp:
-                line = fp.readlines()
-                return [LineEx(file, line.rstrip()) for line in line]
+    CATEGORY = ARGS.category or CONFIG.categorys or None
 
-        lines: list[LineEx] = []
-
-        for arg_file in args.files:
-            files = glob.glob(arg_file)
-
-            if not files:
-                print(f"Warning: No files matched pattern: {arg_file}")
-
-            for file in files:
-                lines += _load_file(file)
-
-        if args.sort:
-            lines = sorted(lines, key=lambda line: line.line)
-
-        return lines
-
-    def _message(columns: list[dict[str, str]], line: LineEx, matched_tags: list[MatchedTag]) -> dict[str, str]:
-        message: dict[str, str] = {}
-        for column in columns:
-            if not column['enable']:
+    # match
+    lineAndCategoryKeyMsgs: list[LineCategoryKeyMsg] = []
+    for line in LOGLINES:
+        lckm = LineCategoryKeyMsg(line, [])
+        for ckm in KEYMSG:
+            if ((CATEGORY) and (ckm.category in CATEGORY)):
                 continue
-            title = column['display']
-            match column['name']:
-                case 'TAG':
-                    message[title] = ', '.join([matched_tag.message for matched_tag in matched_tags])
-                case 'CATEGORY':
-                    message[title] = ', '.join([matched_tag.category for matched_tag in matched_tags])
-                case 'FILE':
-                    message[title] = line.file_path
-                case 'LOG':
-                    message[title] = line.line
-        return message
-
-    logs = _load_log(args)
-    config = LoadConfig(args)
-
-    message: list[dict[str, str]] = []
-    for line in logs:
-        matched_tags: list[MatchedTag] = []
-        for tag_category in config.tags:
-            if config.category and (tag_category.category not in config.category):
-                continue
-            for tag_tag in tag_category.tags:
-                if tag_tag.pattern is not None:
-                    if tag_tag.pattern.search(line.line):
-                        matched_tags.append(MatchedTag(tag_category.category, tag_tag.keyword, tag_tag.message))
+            for km in ckm.kms:
+                if km.pattern is not None:
+                    if km.pattern.search(line.line):
+                        lckm.ckm.append(CategoryKeyMsg(ckm.category, km))
                 else:
-                    if tag_tag.keyword in line.line:
-                        matched_tags.append(MatchedTag(tag_category.category, tag_tag.keyword, tag_tag.message))
+                    if km.keyword in line.line:
+                        lckm.ckm.append(CategoryKeyMsg(ckm.category, km))
 
-        if not args.uniq or len(matched_tags) > 0:
-            message.append(_message(config.columns, line, matched_tags))
+        if not ARGS.uniq or len(lckm.ckm) > 0:
+            lineAndCategoryKeyMsgs.append(lckm)
 
-    table = tabulate(message, headers='keys', tablefmt='plain')
+    # convert table format
+    table_data: list[dict[str, str]] = []
+    for lckm in lineAndCategoryKeyMsgs:
+        data: dict[str, str] = {}
+        for column in CONFIG.columns:
+            if column['enable']:
+                title = column['display']
+                match column['name']:
+                    case 'TAG':
+                        data[title] = ', '.join([ckm.km.message for ckm in lckm.ckm])
+                    case 'CATEGORY':
+                        data[title] = ', '.join([ckm.category.category for ckm in lckm.ckm])
+                    case 'FILE':
+                        data[title] = lckm.line.file
+                    case 'LOG':
+                        data[title] = lckm.line.line
+        table_data.append(data)
 
-    if not args.hidden:
+    # output
+    table = tabulate(table_data, headers='keys', tablefmt='plain')
+
+    if not ARGS.hidden:
         print(table)
 
-    if args.out:
-        with open(args.out, 'w', encoding='utf-8') as f:
+    if ARGS.out:
+        with open(ARGS.out, 'w', encoding='utf-8') as f:
             f.write(table)
             f.write('\n')
 
