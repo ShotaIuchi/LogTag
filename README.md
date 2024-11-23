@@ -43,12 +43,16 @@ logtag [files] -o [output_file] [options]
 
 ### Options
 
-- `-c`, `--category`: Specify one or more tag categories to filter log messages by. If not provided, all categories will be used.
-- `-o`, `--out`: Specify the output file. If not specified, the result will be printed to the standard output.
-- `-s`, `--sort`: Sort the log messages by their content.
-- `-u`, `--uniq`: Only tagged messages will be displayed.
-- `--hidden`: Log messages will be hidden. By default, log messages are displayed.
-- `--config`: Specify a custom configuration directory containing `config.yaml` and tag files.
+- `-o`, `--out`: Outputs the result to the specified file.
+- `-s`, `--sort`: Sorts the log messages.
+- `-u`, `--uniq`: !!!DEPRECATED!!! Displays only tagged messages.
+- `-f`, `--filter`: Displays only tagged messages.
+- `--hidden`: Does not output log messages to the console.
+- `--config`: Specifies a custom configuration directory.
+- `--config-first-directory-tag`: Loads custom tag file settings only from the first found directory.
+- `--category`: Specifies one or more tag categories to filter log messages. If not specified, all categories are used.
+- `--stop-first-tag`: Stops tagging a line as soon as the first tag is matched.
+- `--stop-first-category`: Stops tagging a line as soon as the first category is matched.
 
 ## Configuration Files Overview
 
@@ -118,7 +122,11 @@ The tool looks for configuration files in the following priority order:
 Below is an example of adding tags to log files, sorting the log messages, removing duplicates, and outputting the result to `output.txt`. Wildcards (`*.txt`) can be used to match multiple files:
 
 ```sh
-python logtag.py *.txt -o output.txt --sort --uniq --config ./config
+$ logtag *.txt -o output.txt --sort --filter --config ./config
+```
+
+```sh
+$ python logtag.py *.txt -o output.txt --sort --filter --config ./config
 ```
 
 This command reads all `.txt` files in the current directory, adds tags, sorts and removes duplicates, and then outputs the result to `output.txt`. If a custom configuration directory is provided (via `--config`), the tool will look for `config.yaml` and `logtag.yaml` in that directory.
