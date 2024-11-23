@@ -150,6 +150,9 @@ def load_ckms(ARGS: argparse.Namespace) -> list[CategoryKeyMsgs]:
                 ckm = CategoryKeyMsgs(category, km)
                 kms.append(ckm)
 
+        if ARGS.config_first_directory_tag and len(kms) > 0:
+            break
+
     kms.sort(key=lambda key: key.category.category)
     kms.sort(key=lambda key: key.category.priority)
     return kms
@@ -181,9 +184,11 @@ def main():
     parser.add_argument('files', type=str, nargs='+', help='Files to add tags.')
     parser.add_argument('-o', '--out', type=str, help='Output file.')
     parser.add_argument('-s', '--sort', action='store_true', help='Sort log messages.')
-    parser.add_argument('-u', '--uniq', action='store_true', help='Remove duplicate log messages.')
+    parser.add_argument('-u', '--uniq', action='store_true', help='!!!! deprecated !!!! Show only tagged logs.')
+    parser.add_argument('-f', '--filter', action='store_true', help='Show only tagged logs.')
     parser.add_argument('--hidden', action='store_true', help='Display hidden.')
     parser.add_argument('--config', type=str, help='Config directory.')
+    parser.add_argument('--config-first-directory-tag', action='store_true', help='Load only the tags from the first configuration directory')
     parser.add_argument('--category', type=str, nargs="*", help='Enable tag category.')
     parser.add_argument('--stop-first-tag', action='store_true', help='Stop tagging upon hitting the first tag.')
     parser.add_argument('--stop-first-category', action='store_true', help='Stop tagging upon hitting the first category.')
@@ -228,7 +233,7 @@ def main():
                 if ARGS.stop_first_category or ARGS.stop_first_tag:
                     break
 
-        if not ARGS.uniq or len(lckm.ckm) > 0:
+        if (not ARGS.uniq and not ARGS.filter) or len(lckm.ckm) > 0:
             lineAndCategoryKeyMsgs.append(lckm)
 
     # convert table format
