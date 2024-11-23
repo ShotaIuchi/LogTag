@@ -4,16 +4,41 @@ import os
 import re
 import sys
 import yaml
+import tabulate
 import LogTag
-from tabulate import tabulate
-from typing import Callable
 
-
-DOTDIR = '.logtag'
 
 PWD = os.getcwd()
 CWD = os.path.dirname(os.path.abspath(__file__))
 HOME = os.path.expanduser('~')
+
+FILE_ENCODING = 'utf-8'
+DOTDIR = '.logtag'
+CONFIG_FILE = 'config.yaml'
+KEYMSG_DIR = 'logtag'
+KEYMSG_EXT = ['.yaml', '.yml']
+
+
+class K_CONFIG:
+    COLUMN = 'column'
+    CATEGORY = 'category'
+
+
+class K_KEYMSG:
+    KEYWORD = 'keyword'
+    MESSAGE = 'message'
+    REGEX = 'regex'
+
+
+class K_COLUMN:
+    NAME = 'name'
+    DISPLAY = 'display'
+    ENABLE = 'enable'
+
+    C_TAG = 'TAG'
+    C_CATEGORY = 'CATEGORY'
+    C_FILE = 'FILE'
+    C_LOG = 'LOG'
 
 
 class Config:
@@ -79,13 +104,13 @@ def load_config(ARGS: argparse.Namespace) -> Config:
         if not os.path.exists(dir):
             continue
 
-        config_path = os.path.join(dir, 'config.yaml')
+        config_path = os.path.join(dir, CONFIG_FILE)
         if os.path.exists(config_path):
-            with open(config_path, 'r', encoding='utf-8') as fp:
+            with open(config_path, 'r', encoding=FILE_ENCODING) as fp:
+                config_f = yaml.safe_load(fp)
+                config_c = Config(config_f.get(K_CONFIG.COLUMN, []), config_f.get(K_CONFIG.CATEGORY, []))
                 # first found config file is used
-                loaded_config = yaml.safe_load(fp)
-                config = Config(loaded_config.get('column', []), loaded_config.get('category', []))
-                return config
+                return config_c
     return None
 
 
@@ -100,13 +125,14 @@ def load_ckms(ARGS: argparse.Namespace) -> list[CategoryKeyMsgs]:
         if not os.path.exists(dir):
             continue
 
-        km_dir = os.path.join(dir, 'logtag')
+        km_dir = os.path.join(dir, KEYMSG_DIR)
         if not os.path.exists(km_dir):
             continue
 
         for km_path in os.listdir(km_dir):
-            if not km_path.endswith('.yaml') and not km_path.endswith('.yml'):
-                continue
+            for ext in KEYMSG_EXT:
+                if not km_path.endswith(ext):
+                    continue
 
             conifg_data = match.search(km_path)
             if not conifg_data:
@@ -114,18 +140,18 @@ def load_ckms(ARGS: argparse.Namespace) -> list[CategoryKeyMsgs]:
             if conifg_data.end() < 2:
                 continue
 
-            with open(os.path.join(km_dir, km_path), 'r', encoding='utf-8') as fp:
+            with open(os.path.join(km_dir, km_path), 'r', encoding=FILE_ENCODING) as fp:
                 loaded_kms = yaml.safe_load(fp)
                 if not loaded_kms:
                     continue
 
                 category = Category(conifg_data.group(1), conifg_data.group(2))
-                km = [KeyMsg(tag['keyword'], tag['message'], tag.get('regex', False)) for tag in loaded_kms]
+                km = [KeyMsg(tag[K_KEYMSG.KEYWORD], tag[K_KEYMSG.MESSAGE], tag.get(K_KEYMSG.REGEX, False)) for tag in loaded_kms]
                 ckm = CategoryKeyMsgs(category, km)
                 kms.append(ckm)
 
-    kms.sort(key=lambda x: x.category.category)
-    kms.sort(key=lambda x: x.category.priority)
+    kms.sort(key=lambda key: key.category.category)
+    kms.sort(key=lambda key: key.category.priority)
     return kms
 
 
@@ -140,7 +166,7 @@ def load_log(ARGS: argparse.Namespace) -> list[LogLine]:
             if not os.path.exists(file):
                 continue
 
-            with open(file, 'r', encoding='utf-8') as fp:
+            with open(file, 'r', encoding=FILE_ENCODING) as fp:
                 line = fp.readlines()
                 logs += [LogLine(file, line.rstrip()) for line in line]
 
@@ -170,6 +196,10 @@ def main():
         sys.exit(1)
 
     CONFIG = load_config(ARGS)
+    if not CONFIG:
+        print("Error: No config file found.")
+        sys.exit(1)
+
     KEYMSG = load_ckms(ARGS)
     LOGLINES = load_log(ARGS)
 
@@ -206,27 +236,27 @@ def main():
     for lckm in lineAndCategoryKeyMsgs:
         data: dict[str, str] = {}
         for column in CONFIG.columns:
-            if column['enable']:
-                title = column['display']
-                match column['name']:
-                    case 'TAG':
+            if column[K_COLUMN.ENABLE]:
+                title = column[K_COLUMN.DISPLAY]
+                match column[K_COLUMN.NAME]:
+                    case K_COLUMN.C_TAG:
                         data[title] = ', '.join([ckm.km.message for ckm in lckm.ckm])
-                    case 'CATEGORY':
+                    case K_COLUMN.C_CATEGORY:
                         data[title] = ', '.join([ckm.category.category for ckm in lckm.ckm])
-                    case 'FILE':
+                    case K_COLUMN.C_FILE:
                         data[title] = lckm.line.file
-                    case 'LOG':
+                    case K_COLUMN.C_LOG:
                         data[title] = lckm.line.line
         table_data.append(data)
 
     # output
-    table = tabulate(table_data, headers='keys', tablefmt='plain')
+    table = tabulate.tabulate(table_data, headers='keys', tablefmt='plain')
 
     if not ARGS.hidden:
         print(table)
 
     if ARGS.out:
-        with open(ARGS.out, 'w', encoding='utf-8') as f:
+        with open(ARGS.out, 'w', encoding=FILE_ENCODING) as f:
             f.write(table)
             f.write('\n')
 
