@@ -179,12 +179,12 @@ def load_log(ARGS: argparse.Namespace) -> list[LogLine]:
 def main():
     parser = argparse.ArgumentParser(description='LogTag adds tags to log messages.')
     parser.add_argument('files', type=str, nargs='+', help='Files to add tags.')
-    parser.add_argument('-c', '--category', type=str, nargs="*", help='Enable tag category.')
     parser.add_argument('-o', '--out', type=str, help='Output file.')
     parser.add_argument('-s', '--sort', action='store_true', help='Sort log messages.')
     parser.add_argument('-u', '--uniq', action='store_true', help='Remove duplicate log messages.')
     parser.add_argument('--hidden', action='store_true', help='Display hidden.')
     parser.add_argument('--config', type=str, help='Config directory.')
+    parser.add_argument('--category', type=str, nargs="*", help='Enable tag category.')
     parser.add_argument('--stop-first-tag', action='store_true', help='Stop tagging upon hitting the first tag.')
     parser.add_argument('--stop-first-category', action='store_true', help='Stop tagging upon hitting the first category.')
     parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {LogTag.__version__}')
