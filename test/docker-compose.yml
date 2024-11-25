@@ -1,0 +1,86 @@
+services:
+  # test0:
+  #   image: test0
+  #   container_name: test0
+  #   build:
+  #     context: ./
+  #     dockerfile: test0.Dockerfile
+  test1:
+    image: test1
+    container_name: test1
+    build:
+      context: ./
+      dockerfile: test1.Dockerfile
+  test2:
+    image: test2
+    container_name: test2
+    build:
+      context: ./
+      dockerfile: test2.Dockerfile
+    depends_on:
+      - test1
+  test3:
+    image: test3
+    container_name: test3
+    build:
+      context: ./
+      dockerfile: test3.Dockerfile
+    depends_on:
+      - test2
+  test4:
+    image: test4
+    container_name: test4
+    build:
+      context: ./
+      dockerfile: test4.Dockerfile
+    depends_on:
+      - test3
+  test5:
+    image: test5
+    container_name: test5
+    build:
+      context: ./
+      dockerfile: test5.Dockerfile
+    depends_on:
+      - test4
+  test6:
+    image: test6
+    container_name: test6
+    build:
+      context: ./
+      dockerfile: test6.Dockerfile
+    depends_on:
+      - test5
+  test7:
+    image: test7
+    container_name: test7
+    build:
+      context: ./
+      dockerfile: test7.Dockerfile
+    depends_on:
+      - test6
+
+  test51:
+    image: test51
+    container_name: test51
+    build:
+      context: ./
+      dockerfile: test51.Dockerfile
+    depends_on:
+      - test7
+  test52:
+    image: test52
+    container_name: test52
+    build:
+      context: ./
+      dockerfile: test52.Dockerfile
+    depends_on:
+      - test51
+  test53:
+    image: test53
+    container_name: test53
+    build:
+      context: ./
+      dockerfile: test53.Dockerfile
+    depends_on:
+      - test51

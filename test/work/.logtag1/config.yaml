@@ -1,0 +1,22 @@
+# Log columns display settings.
+column:
+    - name: TAG
+      display: TAG
+      enable: true
+    - name: CATEGORY
+      display: CATEGORY
+      enable: true
+    - name: FILE
+      display: LOG-FILE
+      enable: true
+    - name: LOG
+      display: LOG
+      enable: true
+
+# Enable tag category.
+# "<tag>-<subtag>"
+category:
+    # - "default"
+    # - "android"
+    # - "android-kernel"
+    # - "etc..."

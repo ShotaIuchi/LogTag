@@ -1,0 +1,19 @@
+AAA             BBB           DDD
+tag1-1, tag1-2  tag1, tag1    111
+tag2-1, tag2-2  tag2, tag2    222
+tag3-1, tag3-2  tag3, tag3    333
+tag4-1, tag4-2  tag4, tag4    444
+                              555
+tag4-3          tag4          666
+tag3-3          tag3          777
+tag2-3          tag2          888
+tag1-3          tag1          999
+tag1-3          tag1          999
+tag2-3          tag2          888
+tag3-3          tag3          777
+tag4-3          tag4          666
+                              555
+tag4-1, tag4-2  tag4, tag4    444
+tag3-1, tag3-2  tag3, tag3    333
+tag2-1, tag2-2  tag2, tag2    222
+tag1-1, tag1-2  tag1, tag1    111
