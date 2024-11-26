@@ -1,0 +1,36 @@
+name: LogTag
+
+on:
+  push:
+    branches:
+      - "main"
+      - "develop/**"
+    paths-ignore:
+      - ".vscode/**"
+      - "README.md"
+      - "LICENSE"
+      - "doc/**"
+  pull_request:
+    branches:
+      - "main"
+    paths-ignore:
+      - ".vscode/**"
+      - "README.md"
+      - "LICENSE"
+      - "doc/**"
+
+jobs:
+  docker-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Make test script executable
+        run: chmod +x test/1.run.sh
+
+      - name: Run Test Script in test folder
+        run: |
+          cd test
+          ./1.run.sh
