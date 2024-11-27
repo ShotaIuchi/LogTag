@@ -5,33 +5,57 @@ services:
   #   build:
   #     context: ./
   #     dockerfile: test0.Dockerfile
+  test-config-config:
+    image: test-config-config
+    container_name: test-config-config
+    build:
+      context: ./
+      dockerfile: test-config-config.Dockerfile
   test-config-none:
     image: test-config-none
     container_name: test-config-none
     build:
       context: ./
       dockerfile: test-config-none.Dockerfile
+  test-config-user:
+    image: test-config-user
+    container_name: test-config-user
+    build:
+      context: ./
+      dockerfile: test-config-user.Dockerfile
   test-config-pwd:
     image: test-config-pwd
     container_name: test-config-pwd
     build:
       context: ./
       dockerfile: test-config-pwd.Dockerfile
-    depends_on:
-      - test-config-none
+  test-config-pwd-out:
+    image: test-config-pwd-out
+    container_name: test-config-pwd-out
+    build:
+      context: ./
+      dockerfile: test-config-pwd-out.Dockerfile
   test-config-home:
     image: test-config-home
     container_name: test-config-home
     build:
       context: ./
       dockerfile: test-config-home.Dockerfile
-    depends_on:
-      - test-config-pwd
+  test-config-cwd:
+    image: test-config-cwd
+    container_name: test-config-cwd
+    build:
+      context: ./
+      dockerfile: test-config-cwd.Dockerfile
   test-config-home-pwd:
     image: test-config-home-pwd
     container_name: test-config-home-pwd
     build:
       context: ./
       dockerfile: test-config-home-pwd.Dockerfile
-    depends_on:
-      - test-config-home
+  test-config-home-pwd-swap:
+    image: test-config-home-pwd-swap
+    container_name: test-config-home-pwd-swap
+    build:
+      context: ./
+      dockerfile: test-config-home-pwd-swap.Dockerfile

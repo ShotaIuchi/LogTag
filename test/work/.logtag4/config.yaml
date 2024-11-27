@@ -16,7 +16,4 @@ column:
 # Enable tag category.
 # "<tag>-<subtag>"
 category:
-    # - "default"
-    # - "android"
-    # - "android-kernel"
-    # - "etc..."
+    - "tag2"
