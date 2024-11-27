@@ -6,7 +6,8 @@ RUN pip install -e .
 
 WORKDIR /root/work/log
 
-RUN cp -a ../.logtag1 ~/.logtag
+RUN rm -rf /root/work/tmp/LogTag/.logtag
+RUN cp -a ../.logtag1 /root/work/tmp/LogTag/.logtag
 
 RUN logtag *.txt > ./tmp.log
 RUN diff ./tmp.log ../correct/correct-single-none.log > result-home-none

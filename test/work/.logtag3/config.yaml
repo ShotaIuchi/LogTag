@@ -1,17 +1,17 @@
 # Log columns display settings.
 column:
     - name: TAG
-      display: TAG
+      display: AAA
       enable: true
     - name: CATEGORY
       display: CATEGORY
       enable: true
     - name: FILE
-      display: LOG-FILE
+      display: マルチばいと文字
       enable: true
     - name: LOG
       display: LOG
-      enable: true
+      enable: false
 
 # Enable tag category.
 # "<tag>-<subtag>"

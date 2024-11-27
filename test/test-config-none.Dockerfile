@@ -6,8 +6,8 @@ RUN pip install -e .
 
 WORKDIR /root/work/log
 
-RUN logtag * > ./tmp.log
+RUN logtag *.txt > ./tmp.log
 RUN diff ./tmp.log ../correct/correct-none-none.log > result-none-none
 
-RUN logtag * --sort > ./tmp.log
+RUN logtag *.txt --sort > ./tmp.log
 RUN diff ./tmp.log ../correct/correct-none-sort.log > result-none-sort

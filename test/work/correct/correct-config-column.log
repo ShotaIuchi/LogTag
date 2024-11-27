@@ -1,0 +1,19 @@
+AAA             CATEGORY    マルチばいと文字
+tag1-1, tag1-2  tag1, tag1  log1.txt
+tag2-1, tag2-2  tag2, tag2  log1.txt
+                            log1.txt
+                            log1.txt
+                            log1.txt
+                            log1.txt
+                            log1.txt
+tag2-3          tag2        log1.txt
+tag1-3          tag1        log1.txt
+tag1-3          tag1        log2.txt
+tag2-3          tag2        log2.txt
+                            log2.txt
+                            log2.txt
+                            log2.txt
+                            log2.txt
+                            log2.txt
+tag2-1, tag2-2  tag2, tag2  log2.txt
+tag1-1, tag1-2  tag1, tag1  log2.txt
