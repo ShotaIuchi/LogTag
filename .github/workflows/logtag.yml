@@ -21,6 +21,7 @@ on:
 
 jobs:
   docker-test:
+    name: Test from Docker
     runs-on: ubuntu-latest
 
     steps:
@@ -34,3 +35,34 @@ jobs:
         run: |
           cd test
           ./1.run.sh
+
+  deploy-pypi:
+    name: Deploy PyPi
+    needs: docker-test
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install setuptools wheel twine
+
+      - name: Build package
+        run: |
+          python setup.py sdist bdist_wheel
+
+      - name: Publish to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          python -m twine upload dist/*
