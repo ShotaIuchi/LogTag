@@ -8,3 +8,5 @@ cp -r ../setup.py ./work/tmp/
 
 docker compose build 
 docker compose up -d
+
+./9.clean.sh
