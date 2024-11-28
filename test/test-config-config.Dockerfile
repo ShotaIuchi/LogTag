@@ -9,8 +9,5 @@ WORKDIR /root/work/log
 RUN logtag *.txt --config ../.logtag3 > ./tmp.log
 RUN diff ./tmp.log ../correct/correct-config-column.log > result-config-column
 
-RUN echo "TODO: Add more tests"
-# RUN logtag *.txt --config ../.logtag4 > ./tmp.log
-# RUN diff ./tmp.log ../correct/correct-config-category.log > result-config-category
-
-# CMD tail -f /dev/null
+RUN logtag *.txt --config ../.logtag4 > ./tmp.log
+RUN diff ./tmp.log ../correct/correct-config-category.log > result-config-category
