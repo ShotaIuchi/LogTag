@@ -215,7 +215,7 @@ def main():
     for line in LOGLINES:
         lckm = LineCategoryKeyMsg(line, [])
         for ckm in KEYMSG:
-            if ((CATEGORY) and (ckm.category in CATEGORY)):
+            if ((CATEGORY) and (ckm.category.category not in CATEGORY)):
                 continue
             for km in ckm.kms:
                 if km.pattern is not None:
