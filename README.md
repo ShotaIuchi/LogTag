@@ -47,6 +47,7 @@ logtag [files] -o [output_file] [options]
 - `-s`, `--sort`: Sorts the log messages.
 - `-u`, `--uniq`: !!!DEPRECATED!!! Displays only tagged messages.
 - `-f`, `--filter`: Displays only tagged messages.
+- `-m`, `--merge`: Merges the log messages.
 - `--hidden`: Does not output log messages to the console.
 - `--config`: Specifies a custom configuration directory.
 - `--config-first-directory-tag`: Loads custom tag file settings only from the first found directory.
