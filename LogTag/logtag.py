@@ -176,6 +176,24 @@ def load_log(ARGS: argparse.Namespace) -> list[LogLine]:
     if ARGS.sort:
         logs = sorted(logs, key=lambda log: log.line)
 
+    if ARGS.merge:
+        merged_logs = []
+        for log in logs:
+            current_log = merged_logs[-1] if merged_logs else None
+            if not current_log or current_log.line != log.line:
+                # temporarily store in a list
+                log.file = [log.file]
+                merged_logs.append(log)
+            else:
+                if log.file not in current_log.file:
+                    current_log.file.append(log.file)
+
+        # Convert the list back to a string
+        for log in merged_logs:
+            log.file = ', '.join(log.file)
+
+        logs = merged_logs
+
     return logs
 
 
@@ -186,6 +204,7 @@ def main():
     parser.add_argument('-s', '--sort', action='store_true', help='Sorts the log messages.')
     parser.add_argument('-u', '--uniq', action='store_true', help='!!!DEPRECATED!!! Displays only tagged messages.')
     parser.add_argument('-f', '--filter', action='store_true', help='Displays only tagged messages.')
+    parser.add_argument('-m', '--merge', action='store_true', help='Merges the log messages.')
     parser.add_argument('--hidden', action='store_true', help='Does not output log messages to the console.')
     parser.add_argument('--config', type=str, help='Specifies a custom configuration directory.')
     parser.add_argument('--config-first-directory-tag', action='store_true', help='Loads custom tag file settings only from the first found directory.')
