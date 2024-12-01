@@ -54,6 +54,8 @@ logtag [files] -o [output_file] [options]
 - `--category`: Specifies one or more tag categories to filter log messages. If not specified, all categories are used.
 - `--stop-first-tag`: Stops tagging a line as soon as the first tag is matched.
 - `--stop-first-category`: Stops tagging a line as soon as the first category is matched.
+- `--table-theme`: Specifies the table theme.
+  - theme type: https://github.com/gregbanks/python-tabulate?tab=readme-ov-file#table-format
 
 ## Configuration Files Overview
 

@@ -54,6 +54,8 @@ logtag [files] -o [output_file] [options]
 - `--category`: 1 つ以上のタグカテゴリを指定し、ログメッセージをフィルタリングします。指定しない場合、全てのカテゴリが使用されます。
 - `--stop-first-tag`: 1 行に対するタグ付けを最初のタグがヒットした時点で終了します。
 - `--stop-first-category`: 1 行に対するタグ付けを最初のタグがヒットした時点で終了します。
+- `--table-theme`: テーブルのテーマを変更します。
+  - テーマ種別: https://github.com/gregbanks/python-tabulate?tab=readme-ov-file#table-format
 
 ## 設定ファイルの概要
 
