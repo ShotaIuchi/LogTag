@@ -211,6 +211,7 @@ def main():
     parser.add_argument('--category', type=str, nargs="*", help='Specifies one or more tag categories to filter log messages. If not specified, all categories are used.')
     parser.add_argument('--stop-first-tag', action='store_true', help='Stops tagging a line as soon as the first tag is matched.')
     parser.add_argument('--stop-first-category', action='store_true', help='Stops tagging a line as soon as the first category is matched.')
+    parser.add_argument('--table-theme', type=str, default='plain', help='Specifies the table theme.')
     parser.add_argument('-v', '--version', action='version', version=f'%(prog)s {LogTag.__version__}')
 
     ARGS: argparse.Namespace = parser.parse_args()
@@ -274,7 +275,7 @@ def main():
         table_data.append(data)
 
     # output
-    table = tabulate.tabulate(table_data, headers='keys', tablefmt='plain')
+    table = tabulate.tabulate(table_data, headers='keys', tablefmt=ARGS.table_theme)
 
     if not ARGS.hidden:
         print(table)
