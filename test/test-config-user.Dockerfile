@@ -18,6 +18,9 @@ RUN diff ./tmp.log ../correct/correct-single-sort.log > result-user-sort
 RUN logtag *.txt --sort --merge --config ../.logtag1> ./tmp.log
 RUN diff ./tmp.log ../correct/correct-single-sort-merge.log > result-user-sort-merge
 
+RUN logtag *.txt --table-theme github --config ../.logtag1 > ./tmp.log
+RUN diff ./tmp.log ../correct/correct-single-table-theme-github.log > result-user-table-theme-github
+
 RUN logtag *.txt --filter --config ../.logtag1 > ./tmp.log
 RUN diff ./tmp.log ../correct/correct-single-filter.log > result-user-filter
 
