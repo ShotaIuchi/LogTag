@@ -20,6 +20,9 @@ RUN diff ./tmp.log ../correct/correct-single-sort.log > result-pwd-sort
 RUN logtag *.txt --sort --merge > ./tmp.log
 RUN diff ./tmp.log ../correct/correct-single-sort-merge.log > result-pwd-sort-merge
 
+RUN logtag *.txt --table-theme github > ./tmp.log
+RUN diff ./tmp.log ../correct/correct-single-table-theme-github.log > result-pwd-table-theme-github
+
 RUN logtag *.txt --filter > ./tmp.log
 RUN diff ./tmp.log ../correct/correct-single-filter.log > result-pwd-filter
 
